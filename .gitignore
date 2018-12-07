@@ -1,0 +1,4 @@
+*.o
+
+nat_proxy_asio
+Debug/
