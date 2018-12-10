@@ -5,13 +5,15 @@
  *      Author: root
  */
 
+#include "CLogger.hpp"
 #include "CServer.hpp"
 #include <iostream>
 #include <string>
-#include "CInclude.hpp"
-int main() {
 
-	CServer server("172.16.31.176", 10001, 2);
+int main()
+{
+	InitLog("/usr/local/log/");
+	CServer server("172.16.31.183", 10001, 2);
 	server.start();
 
 

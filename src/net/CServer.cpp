@@ -6,15 +6,17 @@
  */
 
 #include "CServer.hpp"
+#include <boost/bind.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/asio/io_context.hpp>
-#include <iostream>
+#include "CLogger.hpp"
 
 CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 : _ioContextPool(pool_size)
 , _signalSets(_ioContextPool.getIoContext())
 , _acceptor(_ioContextPool.getIoContext())
 , _sessionPtr()
-, _sessionId(0)
+, _sessionId(1000)
 , _started(true)
 {
 	_signalSets.add(SIGHUP);
@@ -38,12 +40,13 @@ CServer::~CServer()
 
 void CServer::stop()
 {
-	std::cout << "server stop." << std::endl;
+	LOGF(WARNING) << "server stop.";
 	_started = false;
 }
 
 void CServer::start()
 {
+	LOGF(TRACE) << "start server: " << _acceptor.local_endpoint();
 	startAccept();
 	_ioContextPool.run();
 }
@@ -60,8 +63,8 @@ void CServer::startAccept()
 
 void CServer::onAccept(const boost::system::error_code& ec)
 {
-	std::cout << "ThreadId: " << boost::this_thread::get_id()
-			  << " enter[" << __FUNCTION__ << "] ec: " << ec.message() << std::endl;
+	LOGF(TRACE) << "accept conn: [" << _sessionPtr->socket().remote_endpoint()
+			    << "] ec: " << ec.message();
 	if (!ec) {
 		_sessionPtr->startRead();
 	}
@@ -78,6 +81,25 @@ bool CServer::onLogin(CSession::SelfType sess)
 
 	sess->id(getSessionId());
 	_guidMap.insert(GuidMap::value_type(sess->guid(), sess->id()));
+	_sessionMap.insert(SessionMap::value_type(sess->id(), sess));
 
+	return true;
+}
+
+bool CServer::getAllClients(CSession::SelfType sess, std::vector<SClientInfo>& clients)
+{
+	boost::mutex::scoped_lock lk(_mutex);
+	SessionMap::iterator it = _sessionMap.begin();
+	for (; it != _sessionMap.end(); ++it) {
+		if (std::string::npos != it->second->guid().find_first_of("ep")) {
+			if (it->second == sess)
+				continue;
+
+			LOG(TRACE) << "get client: " << it->first;
+			SClientInfo info;
+			info.uiId = it->first;
+			clients.push_back(info);
+		}
+	}
 	return true;
 }

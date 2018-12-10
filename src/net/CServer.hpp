@@ -28,12 +28,12 @@ namespace asio {
 class CServer : private boost::noncopyable
 {
 public:
-	//typedef boost::shared_ptr<CServer> SelfType;
 	CServer(std::string address, uint16_t port, size_t pool_size);
 	~CServer();
 	void start();
 	void stop();
 	bool onLogin(CSession::SelfType sess);
+	bool getAllClients(CSession::SelfType sess, std::vector<SClientInfo>& clients);
 
 private:
 	void startAccept();

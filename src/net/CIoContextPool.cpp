@@ -11,8 +11,8 @@
 CIoContextPool::CIoContextPool(size_t pool_size)
 : _nextContextIndex(0)
 {
-	for (size_t i; i < pool_size; i++) {
-		io_context_ptr io(new asio::io_context);
+	for (size_t i = 0; i < pool_size; i++) {
+		io_context_ptr io = boost::make_shared<asio::io_context>();
 		_ioContexts.push_back(io);
 		_ioContextWorks.push_back(asio::make_work_guard(*io));
 	}
@@ -27,8 +27,6 @@ void CIoContextPool::run()
 {
 	std::vector<boost::shared_ptr<boost::thread> > threads;
 	for (size_t i = 0; i < _ioContexts.size(); i++) {
-		std::cout << "statr io_context; " << i << std::endl;
-
 		boost::shared_ptr<boost::thread> t(new boost::thread(
 				boost::bind(&asio::io_context::run, _ioContexts[i])));
 		threads.push_back(t);

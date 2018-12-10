@@ -15,6 +15,7 @@
 #include <boost/noncopyable.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -32,11 +33,16 @@ class CServer;
 class CSession : public boost::enable_shared_from_this<CSession>
 			   , private boost::noncopyable
 {
+private:
+	typedef boost::shared_ptr<std::string> QueItem;
+	typedef std::deque<QueItem > MsgQue;
+
 public:
 	typedef boost::shared_ptr<CSession> SelfType;
 	CSession(CServer& server, asio::io_context& io_context);
 	~CSession();
 	void startRead();
+	void write(QueItem msg);
 	void stop();
 	asio::ip::tcp::socket& socket() { return _socket; }
 
@@ -47,7 +53,9 @@ public:
 private:
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
-	void onWrite();
+	void writeImpl(QueItem& msg);
+	void write();
+	void onWriteComplete(const boost::system::error_code& ec, const size_t bytes);
 
 	bool checkHead(SHeaderPkg& header);
 	bool parseMsg(SHeaderPkg& header);
@@ -58,7 +66,6 @@ private:
 	void onGetConsoles(boost::shared_ptr<CReqGetConsolesPkg>& pkg);
 
 private:
-	typedef std::deque<boost::shared_ptr<std::string> > MsgQue;
 
 	CServer& _server;
 	asio::io_context::strand _strand;
@@ -71,6 +78,7 @@ private:
 	uint32_t 		_id;
 	uint32_t		_privateAddr;
 	std::string		_guid;
+	bool 			_logined;
 	bool			_started;
 };
 

@@ -8,7 +8,13 @@
 #ifndef SRC_NET_CPROTOCOL_HPP_
 #define SRC_NET_CPROTOCOL_HPP_
 
-#include "CInclude.hpp"
+#include <string>
+#include <vector>
+#include <cstring>
+#include <sstream>
+#include <boost/cstdint.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 struct EN_HEAD {
 enum {H1 = 0xDD, H2 = 0x05};
@@ -39,18 +45,23 @@ typedef struct
 	uint16_t usBodyLen;
 }SHeaderPkg;
 
+typedef struct
+{
+	uint32_t uiId;
+}SClientInfo;
 
 class CReqPkgBase
 {
 public:
-	bool convFromStream(const char* p, const size_t n);
+	virtual ~CReqPkgBase() {};
+	virtual bool deserialize(const char* p, const size_t n) = 0;
 	SHeaderPkg header;
 };
 
 class CReqLoginPkg : public CReqPkgBase
 {
 public:
-	bool convFromStream(const char* p, const size_t n);
+	virtual bool deserialize(const char* p, const size_t n);
 
 public:
 	std::string szGuid;
@@ -61,7 +72,7 @@ public:
 class CReqAccelationPkg : public CReqPkgBase
 {
 public:
-	bool convFromStream(const char* p, const size_t n);
+	virtual bool deserialize(const char* p, const size_t n);
 
 public:
 	uint32_t uiId;
@@ -72,7 +83,7 @@ public:
 class CReqGetConsolesPkg : public CReqPkgBase
 {
 public:
-	bool convFromStream(const char* p, const size_t n);
+	virtual bool deserialize(const char* p, const size_t n);
 
 public:
 	uint32_t uiId;
@@ -82,9 +93,11 @@ public:
 class CRespPkgBase
 {
 public:
-	uint16_t size();
-	std::ostream& operator<<(std::ostream& os);
-	int err;
+	virtual ~CRespPkgBase() {};
+	virtual uint16_t size() = 0;
+	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head) = 0;
+
+	uint8_t err;
 };
 
 class CRespLogin : public CRespPkgBase
@@ -93,10 +106,7 @@ public:
 	uint16_t size() {
 		return static_cast<uint16_t>(sizeof(uiId));
 	}
-	std::ostream& operator<<(std::ostream& os) {
-		os << uiId;
-		return os;
-	}
+	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
 
 	uint32_t uiId;
 };
@@ -108,8 +118,19 @@ public:
 		return static_cast<uint16_t>(sizeof(uiUdpAddr) + sizeof(usUdpPort));
 	}
 
+	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
 	uint32_t uiUdpAddr;
 	uint16_t usUdpPort;
+};
+
+class CRespGetClients : public CRespPkgBase
+{
+public:
+	uint16_t size() {
+		return 1 + (clients.size() * sizeof(SClientInfo));
+	}
+	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+	std::vector<SClientInfo> clients;
 };
 
 

@@ -8,7 +8,8 @@
 #ifndef SRC_NET_CIOCONTEXTPOOL_HPP_
 #define SRC_NET_CIOCONTEXTPOOL_HPP_
 
-#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
 #include <boost/asio/io_context.hpp>
