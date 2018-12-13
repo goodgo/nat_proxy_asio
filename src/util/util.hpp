@@ -11,6 +11,9 @@
 #include <string>
 #include <iomanip>
 #include <boost/spirit/include/karma.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/unordered/unordered_map.hpp>
+#include <boost/unordered/unordered_set.hpp>
 
 namespace util {
 	inline std::string to_hex(const char*pbuf, const size_t len)
@@ -32,6 +35,89 @@ namespace util {
 	{
 		return to_hex(arr, N);
 	}
+
+
+	template<typename T>
+	class DataSet
+	{
+	public:
+		typedef boost::unordered_set<T> Container;
+		bool insert(T& item) {
+			boost::mutex::scoped_lock lk(_mutex);
+			if (_container.end() != _container.find(item))
+				return false;
+
+			_container.insert(item);
+			return true;
+		}
+		bool remove(T& item) {
+			boost::mutex::scoped_lock lk(_mutex);
+			if (_container.end() == _container.find(item))
+				return false;
+
+			_container.erase(item);
+			return true;
+		}
+
+		bool has(T& item) {
+			boost::mutex::scoped_lock lk(_mutex);
+			if (_container.end() == _container.find(item))
+				return false;
+			return true;
+		}
+
+	private:
+		Container _container;
+		boost::mutex _mutex;
+	};
+
+	template<typename K, typename V>
+	class DataMap
+	{
+	public:
+		typedef boost::unordered_map<K, V> Container;
+		typedef typename Container::value_type value_type;
+		typedef typename Container::iterator iterator;
+
+		bool insert(const K& key, V value) {
+			boost::mutex::scoped_lock lk(_mutex);
+			if (_container.end() != _container.find(key))
+				return false;
+
+			_container.insert(value_type(key, value));
+			return true;
+		}
+
+		bool remove(const K& key) {
+			boost::mutex::scoped_lock lk(_mutex);
+			iterator it = _container.find(key);
+			if (_container.end() == it)
+				return false;
+
+			_container.erase(it);
+			return true;
+		}
+
+		bool has(const K& key) {
+			boost::mutex::scoped_lock lk(_mutex);
+			if (_container.end() == _container.find(key)) {
+				return false;
+			}
+			return true;
+		}
+
+		V get(const K& key) {
+			boost::mutex::scoped_lock lk(_mutex);
+			iterator it = _container.find(key);
+			//if (_container.end() == it)
+			//	return NULL;
+			return it->second;
+		}
+
+	private:
+		Container _container;
+		boost::mutex _mutex;
+	};
 }
 
 

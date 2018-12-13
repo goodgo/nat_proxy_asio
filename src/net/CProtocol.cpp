@@ -59,14 +59,14 @@ bool CReqGetConsolesPkg::deserialize(const char* p, const size_t n)
 boost::shared_ptr<std::string>
 CRespLogin::serialize(const SHeaderPkg& head)
 {
-	const size_t len = sizeof(SHeaderPkg) + head.usBodyLen;
-	char* buf = new char(len + 1);
-	bzero(buf, len);
+	uint16_t bodylen = size();
+	size_t len = sizeof(SHeaderPkg) + bodylen;
+	char* buf = new char[len + 1]();
 	memcpy(buf, &head, sizeof(head));
+	memcpy(buf + 6, &bodylen, 2);
 	buf[8] = err;
 	memcpy(buf + 9, &uiId, 4);
 
-	LOGF(TRACE) << "[login resp]: " << util::to_hex(buf, len + 1);
 	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return msg;
@@ -75,24 +75,51 @@ CRespLogin::serialize(const SHeaderPkg& head)
 boost::shared_ptr<std::string>
 CRespAccelate::serialize(const SHeaderPkg& head)
 {
-	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>();
+	uint16_t bodylen = size();
+	size_t len = sizeof(SHeaderPkg) + bodylen;
+	char* buf = new char[len + 1]();
+	memcpy(buf, &head, sizeof(head));
+	memcpy(buf + 6, &bodylen, 2);
+	buf[8] = err;
+	memcpy(buf + 9, &uiUdpAddr, 4);
+	memcpy(buf + 9 + 4, &usUdpPort, 2);
+
+	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	delete[] buf;
+	return msg;
+}
+
+
+boost::shared_ptr<std::string>
+CRespAccess::serialize(const SHeaderPkg& head)
+{
+	uint16_t bodylen = size();
+	size_t len = sizeof(SHeaderPkg) + bodylen;
+	char* buf = new char[len + 1]();
+	memcpy(buf, &head, sizeof(head));
+	memcpy(buf + 6, &bodylen, 2);
+	buf[8] = err;
+	memcpy(buf + 9, &uiSrcId, 4);
+	memcpy(buf + 9 + 4, &uiUdpAddr, 4);
+	memcpy(buf + 9 + 4 + 4, &usUdpPort, 2);
+	memcpy(buf + 9 + 4 + 4 + 2, &uiPrivateAddr, 4);
+
+	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	delete[] buf;
 	return msg;
 }
 
 boost::shared_ptr<std::string>
 CRespGetClients::serialize(const SHeaderPkg& head)
 {
-	const size_t len = sizeof(SHeaderPkg) + head.usBodyLen;
-	char* buf = new char(len + 1);
-	bzero(buf, len + 1);
+	uint16_t bodylen = size();
+	size_t len = sizeof(SHeaderPkg) + bodylen;
+	char* buf = new char[len + 1]();
 	memcpy(buf, &head, sizeof(head));
-	buf[8] = static_cast<uint8_t>(clients.size());
-	for (size_t i = 0; i < clients.size(); i++) {
-		memcpy(buf + 8 + (i * sizeof(SClientInfo)), &clients[i].uiId, 4);
-	}
+	memcpy(buf + 6, &bodylen, 2);
+	memcpy(buf + 8, info.c_str(), info.length());
 
-	LOGF(TRACE) << "[clients resp]: " << util::to_hex(buf, len + 1);
-	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	boost::shared_ptr<std::string> msg (new std::string(buf, len));
 	delete[] buf;
 	return msg;
 }

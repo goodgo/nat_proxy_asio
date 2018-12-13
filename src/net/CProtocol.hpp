@@ -15,6 +15,8 @@
 #include <boost/cstdint.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
+#include <boost/unordered/unordered_map.hpp>
+#include <boost/unordered/unordered_set.hpp>
 
 struct EN_HEAD {
 enum {H1 = 0xDD, H2 = 0x05};
@@ -45,10 +47,20 @@ typedef struct
 	uint16_t usBodyLen;
 }SHeaderPkg;
 
-typedef struct
+class SClientInfo
 {
+public:
+	SClientInfo() : uiId(0), uiAddr(0) {}
+	SClientInfo(uint32_t id, uint32_t addr) : uiId(id), uiAddr(addr) {}
+	SClientInfo& operator=(const SClientInfo& info)
+	{
+		uiId = info.uiId;
+		uiAddr = info.uiAddr;
+		return *this;
+	}
 	uint32_t uiId;
-}SClientInfo;
+	uint32_t uiAddr;
+};
 
 class CReqPkgBase
 {
@@ -94,20 +106,25 @@ class CRespPkgBase
 {
 public:
 	virtual ~CRespPkgBase() {};
-	virtual uint16_t size() = 0;
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head) = 0;
 
+protected:
+	virtual uint16_t size() = 0;
+public:
 	uint8_t err;
 };
 
 class CRespLogin : public CRespPkgBase
 {
 public:
-	uint16_t size() {
-		return static_cast<uint16_t>(sizeof(uiId));
-	}
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
 
+private:
+	uint16_t size() {
+		return static_cast<uint16_t>(sizeof(err) + sizeof(uiId));
+	}
+
+public:
 	uint32_t uiId;
 };
 
@@ -118,19 +135,46 @@ public:
 		return static_cast<uint16_t>(sizeof(uiUdpAddr) + sizeof(usUdpPort));
 	}
 
+public:
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+
+public:
 	uint32_t uiUdpAddr;
 	uint16_t usUdpPort;
+};
+
+class CRespAccess : public CRespPkgBase
+{
+public:
+	uint16_t size() {
+		return static_cast<uint16_t>(
+				sizeof(uiSrcId) +
+				sizeof(uiUdpAddr) +
+				sizeof(usUdpPort) +
+				sizeof(uiPrivateAddr));
+	}
+
+public:
+	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+
+public:
+	uint32_t uiSrcId;
+	uint32_t uiUdpAddr;
+	uint16_t usUdpPort;
+	uint32_t uiPrivateAddr;
 };
 
 class CRespGetClients : public CRespPkgBase
 {
 public:
-	uint16_t size() {
-		return 1 + (clients.size() * sizeof(SClientInfo));
-	}
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
-	std::vector<SClientInfo> clients;
+
+private:
+	uint16_t size() {
+		return info.length();
+	}
+public:
+	std::string info;
 };
 
 

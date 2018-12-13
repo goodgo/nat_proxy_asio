@@ -23,6 +23,7 @@ CSession::CSession(CServer& server, asio::io_context& io_context)
 , _id(0)
 , _privateAddr(0)
 , _guid("")
+, _logined(false)
 , _started(true)
 {
 }
@@ -30,6 +31,7 @@ CSession::CSession(CServer& server, asio::io_context& io_context)
 CSession::~CSession()
 {
 	LOGF(TRACE) << "session destroy [s:" << this << "] [id:" << _id << "]";
+	stop();
 }
 
 void CSession::stop()
@@ -45,7 +47,12 @@ void CSession::stop()
 	}
 }
 
-void CSession::startRead()
+void CSession::start()
+{
+	doRead();
+}
+
+void CSession::doRead()
 {
 	if (_started)
 	{
@@ -64,6 +71,16 @@ void CSession::startRead()
 	}
 }
 
+void CSession::doWrite(StringPtr msg)
+{
+	_strand.post(
+			boost::bind(
+					&CSession::writeImpl,
+					shared_from_this(),
+					msg)
+	);
+}
+
 void CSession::onReadHead(const boost::system::error_code& ec, const size_t bytes)
 {
 	if (ec) {
@@ -73,9 +90,9 @@ void CSession::onReadHead(const boost::system::error_code& ec, const size_t byte
 		return;
 	}
 
-	if (!checkHead(_header)) {
+	if (!checkHead()) {
 		LOGF(WARNING) << "[s:" << this << "] [id:" << _id << "] check head failed.";
-		startRead();
+		doRead();
 		return;
 	}
 
@@ -103,7 +120,8 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 	const char* p = asio::buffer_cast<const char*>(_readBuf.data());
 	const size_t n = _readBuf.size();
 
-	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] read package: " <<  util::to_hex(p, _header.usBodyLen);
+	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] read package: "
+			<<  util::to_hex(p, sizeof(_header) + _header.usBodyLen);
 
 	switch (_header.ucFunc) {
 	case EN_FUNC::HEARTBEAT:
@@ -128,20 +146,10 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 	}
 
 	_readBuf.consume(sizeof(_header) + _header.usBodyLen);
-	startRead();
+	doRead();
 }
 
-void CSession::write(QueItem msg)
-{
-	_strand.post(
-			boost::bind(
-					&CSession::writeImpl,
-					shared_from_this(),
-					msg)
-	);
-}
-
-void CSession::writeImpl(QueItem& msg)
+void CSession::writeImpl(StringPtr msg)
 {
 	_sendQue.push_back(msg);
 	if (_sendQue.size() > 1)
@@ -155,7 +163,7 @@ void CSession::writeImpl(QueItem& msg)
 
 void CSession::write()
 {
-	QueItem& msg = _sendQue[0];
+	StringPtr& msg = _sendQue[0];
 
 	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] write: "  << util::to_hex(*msg);
 	asio::async_write(
@@ -190,25 +198,25 @@ void CSession::onWriteComplete(const boost::system::error_code& ec, const size_t
 		LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] queue empty.";
 }
 
-bool CSession::checkHead(SHeaderPkg& header)
+bool CSession::checkHead()
 {
 	const char* pbuf = asio::buffer_cast<const char*>(_readBuf.data());
-	memcpy(&header, pbuf, sizeof(SHeaderPkg));
+	memcpy(&_header, pbuf, sizeof(SHeaderPkg));
 
-	if ((header.ucHead1 == EN_HEAD::H1 &&
-			header.ucHead2 == EN_HEAD::H2) &&
-		(EN_SVR_VERSION::ENCRYP == header.ucSvrVersion ||
-				EN_SVR_VERSION::NOENCRYP == header.ucSvrVersion))
+	if ((_header.ucHead1 == EN_HEAD::H1 &&
+			_header.ucHead2 == EN_HEAD::H2) &&
+		(EN_SVR_VERSION::ENCRYP == _header.ucSvrVersion ||
+				EN_SVR_VERSION::NOENCRYP == _header.ucSvrVersion))
 	{
 		LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] read head:"
 				<< util::to_hex(pbuf, sizeof(SHeaderPkg));
 		return true;
 	}
 
-	LOGF(ERR) << "[s:" << this << "] [id:" << _id << "] read header error: " << (int)header.ucHead1 << "|"
-			  << (int)header.ucHead2 << "|" << (int)header.ucSvrVersion;
+	LOGF(ERR) << "[s:" << this << "] [id:" << _id << "] read header error: " << (int)_header.ucHead1 << "|"
+			  << (int)_header.ucHead2 << "|" << (int)_header.ucSvrVersion;
 
-	bzero(&header, sizeof(SHeaderPkg));
+	bzero(&_header, sizeof(SHeaderPkg));
 	_readBuf.consume(2);
 	return false;
 }
@@ -236,21 +244,59 @@ void CSession::onLogin(boost::shared_ptr<CReqLoginPkg>& req)
 		LOGF(INFO) << "[s:" << this << "] [id:" << _id << "] [guid:" << guid()
 				<< "] login failed.";
 	}
-	req->header.usBodyLen = resp.size();
-	boost::shared_ptr<std::string> msg = resp.serialize(req->header);
-	write(msg);
+
+	StringPtr msg = resp.serialize(req->header);
+	doWrite(msg);
 }
 
-void CSession::onAccelate(boost::shared_ptr<CReqAccelationPkg>& pkg)
+void CSession::onAccelate(boost::shared_ptr<CReqAccelationPkg>& req)
 {
+	CRespAccelate resp;
+	LOGF(INFO) << "[s:" << this << "] [id:" << _id << "] accelate to id: "
+			<< req->uiDstId;
 
+	CSession::SelfType dst = _server.getSession(req->uiDstId);
+	if (dst) {
+		CChannel::SelfType chann = _server.createChannel(shared_from_this(), dst);
+		chann->start();
+
+		asio::ip::udp::socket::endpoint_type src_ep = chann->srcEndpoint();
+		asio::ip::udp::socket::endpoint_type dst_ep = chann->dstEndpoint();
+
+		CRespAccess resp_dst;
+		resp_dst.uiSrcId = _id;
+		resp_dst.uiUdpAddr = dst_ep.address().to_v4().to_uint();
+		resp_dst.usUdpPort = dst_ep.port();
+		resp_dst.uiPrivateAddr = _privateAddr;
+
+		SHeaderPkg head;
+		bzero(&head, sizeof(SHeaderPkg));
+		memcpy(&head, &req->header, sizeof(SHeaderPkg));
+		head.ucFunc = EN_FUNC::REQ_ACCESS;
+
+		StringPtr msg = resp_dst.serialize(head);
+		dst->doWrite(msg);
+
+		resp.err = 0;
+		resp.uiUdpAddr = src_ep.address().to_v4().to_uint();
+		resp.usUdpPort = src_ep.port();
+	}
+	else {
+		resp.err = 0xFF;
+		resp.uiUdpAddr = 0;
+		resp.usUdpPort = 0;
+
+		LOGF(ERR) << "[s:" << this << "] [id:" << _id << "] not found: " << req->uiDstId;
+	}
+
+	StringPtr msg = resp.serialize(req->header);
+	doWrite(msg);
 }
 
 void CSession::onGetConsoles(boost::shared_ptr<CReqGetConsolesPkg>& req)
 {
 	CRespGetClients resp;
-	_server.getAllClients(shared_from_this(), resp.clients);
-	req->header.usBodyLen = resp.size();
-	boost::shared_ptr<std::string> msg = resp.serialize(req->header);
-	write(msg);
+	_server.getAllClients(shared_from_this(), resp.info);
+	StringPtr msg = resp.serialize(req->header);
+	doWrite(msg);
 }

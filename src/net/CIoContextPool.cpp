@@ -6,6 +6,7 @@
  */
 #include "CIoContextPool.hpp"
 #include <boost/thread/thread.hpp>
+#include <boost/bind.hpp>
 #include <iostream>
 
 CIoContextPool::CIoContextPool(size_t pool_size)

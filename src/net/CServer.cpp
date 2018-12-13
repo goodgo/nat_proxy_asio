@@ -17,6 +17,7 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 , _acceptor(_ioContextPool.getIoContext())
 , _sessionPtr()
 , _sessionId(1000)
+, _channelId(1)
 , _started(true)
 {
 	_signalSets.add(SIGHUP);
@@ -42,11 +43,13 @@ void CServer::stop()
 {
 	LOGF(WARNING) << "server stop.";
 	_started = false;
+	_queue.stop();
 }
 
 void CServer::start()
 {
 	LOGF(TRACE) << "start server: " << _acceptor.local_endpoint();
+	_queue.start();
 	startAccept();
 	_ioContextPool.run();
 }
@@ -66,40 +69,63 @@ void CServer::onAccept(const boost::system::error_code& ec)
 	LOGF(TRACE) << "accept conn: [" << _sessionPtr->socket().remote_endpoint()
 			    << "] ec: " << ec.message();
 	if (!ec) {
-		_sessionPtr->startRead();
+		_sessionPtr->start();
 	}
 	startAccept();
 }
 
+void CServer::closeSession(CSession::SelfType sess)
+{
+
+}
+
 bool CServer::onLogin(CSession::SelfType sess)
 {
-	boost::mutex::scoped_lock lk(_mutex);
-	GuidMap::iterator it = _guidMap.find(sess->guid());
-	if (it != _guidMap.end()) {
+	LOGF(TRACE) << "insert guid: " << sess->guid();
+	if (!_guidSet.insert(sess->guid()))
+	{
+		LOGF(DEBUG) << "[s:" << sess << "] [guid:" << sess->guid() << "] login failed.";
 		return false;
 	}
 
-	sess->id(getSessionId());
-	_guidMap.insert(GuidMap::value_type(sess->guid(), sess->id()));
-	_sessionMap.insert(SessionMap::value_type(sess->id(), sess));
+	sess->id(allocSessionId());
+	LOGF(TRACE) << "insert session: " << sess;
+	if (!_sessionMap.insert(sess->id(), sess))
+	{
+		LOGF(DEBUG) << "[s:" << sess << "] [guid:" << sess->guid() << "] login failed.";
+		return false;
+	}
+
+	SClientInfo info(sess->id(), sess->remoteAddr());
+	_queue.add(info);
 
 	return true;
 }
 
-bool CServer::getAllClients(CSession::SelfType sess, std::vector<SClientInfo>& clients)
+CSession::SelfType CServer::getSession(uint32_t id)
 {
-	boost::mutex::scoped_lock lk(_mutex);
-	SessionMap::iterator it = _sessionMap.begin();
-	for (; it != _sessionMap.end(); ++it) {
-		if (std::string::npos != it->second->guid().find_first_of("ep")) {
-			if (it->second == sess)
-				continue;
+	return _sessionMap.get(id);
+}
 
-			LOG(TRACE) << "get client: " << it->first;
-			SClientInfo info;
-			info.uiId = it->first;
-			clients.push_back(info);
-		}
-	}
+CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::SelfType dst)
+{
+	CChannel::SelfType chann(new CChannel(
+			_ioContextPool.getIoContext(),
+			src, dst,
+			allocChannelId(),
+			_acceptor.local_endpoint().address().to_string()));
+
+	src->addSrcChannel(chann);
+	dst->addDstChannel(chann);
+
+	LOGF(INFO) << "create channel(" << chann->id() << ")"
+			<< ", ip: " << chann->srcEndpoint().address().to_string();
+
+	return chann;
+}
+
+bool CServer::getAllClients(CSession::SelfType sess, std::string& str)
+{
+	_queue.get(str);
 	return true;
 }
