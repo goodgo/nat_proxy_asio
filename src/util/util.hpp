@@ -75,11 +75,12 @@ namespace util {
 	class DataMap
 	{
 	public:
-		typedef boost::unordered_map<K, V> Container;
+		typedef boost::weak_ptr<V> ValuePtr;
+		typedef boost::unordered_map<K, ValuePtr> Container;
 		typedef typename Container::value_type value_type;
 		typedef typename Container::iterator iterator;
 
-		bool insert(const K& key, V value) {
+		bool insert(const K& key, ValuePtr value) {
 			boost::mutex::scoped_lock lk(_mutex);
 			if (_container.end() != _container.find(key))
 				return false;
@@ -106,12 +107,21 @@ namespace util {
 			return true;
 		}
 
-		V get(const K& key) {
+		ValuePtr get(const K& key) {
 			boost::mutex::scoped_lock lk(_mutex);
-			iterator it = _container.find(key);
-			//if (_container.end() == it)
-			//	return NULL;
-			return it->second;
+			return _container[key];
+		}
+
+		void removeAll() {
+			boost::mutex::scoped_lock lk(_mutex);
+			iterator it = _container.begin();
+			for (; it != _container.end(); ++it) {
+				if (!it->second.expired()) {
+					boost::shared_ptr<V> p = it->second.lock();
+					p.reset();
+				}
+				_container.erase(it);
+			}
 		}
 
 	private:

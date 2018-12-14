@@ -44,6 +44,9 @@ void CSession::stop()
 		_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
 		_socket.close(ec);
 		_timer.cancel();
+		_server.closeSession(shared_from_this());
+		LOG(DEBUG) << "remove all src channel session id: " << _id;
+		_srcChannels.removeAll();
 	}
 }
 
@@ -165,7 +168,7 @@ void CSession::write()
 {
 	StringPtr& msg = _sendQue[0];
 
-	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] write: "  << util::to_hex(*msg);
+	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] write[" << msg->length() << "]: "  << util::to_hex(*msg);
 	asio::async_write(
 			_socket,
 			asio::buffer(msg->c_str(), msg->length()),
@@ -182,7 +185,7 @@ void CSession::write()
 
 void CSession::onWriteComplete(const boost::system::error_code& ec, const size_t bytes)
 {
-	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] write complete: " << util::to_hex(*_sendQue[0]);
+	LOGF(TRACE) << "[s:" << this << "] [id:" << _id << "] write complete[" << bytes << "]:" << util::to_hex(*_sendQue[0]);
 	_sendQue.pop_front();
 
 	if (ec) {
@@ -256,7 +259,7 @@ void CSession::onAccelate(boost::shared_ptr<CReqAccelationPkg>& req)
 			<< req->uiDstId;
 
 	CSession::SelfType dst = _server.getSession(req->uiDstId);
-	if (dst) {
+	if (dst && dst->id() != _id) {
 		CChannel::SelfType chann = _server.createChannel(shared_from_this(), dst);
 		chann->start();
 

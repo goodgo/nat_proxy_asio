@@ -55,7 +55,7 @@ private:
 	CSession::SelfType _sessionPtr;
 
 	util::DataSet<std::string> _guidSet;
-	util::DataMap<uint32_t, CSession::SelfType> _sessionMap;
+	util::DataMap<uint32_t, CSession> _sessionMap;
 	CQueue _queue;
 
 	boost::atomic<uint32_t> _sessionId;

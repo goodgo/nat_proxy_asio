@@ -7,6 +7,7 @@
 
 #include "CServer.hpp"
 #include <boost/bind.hpp>
+#include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/asio/io_context.hpp>
 #include "CLogger.hpp"
@@ -36,7 +37,7 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 
 CServer::~CServer()
 {
-
+	LOGF(TRACE);
 }
 
 void CServer::stop()
@@ -76,7 +77,10 @@ void CServer::onAccept(const boost::system::error_code& ec)
 
 void CServer::closeSession(CSession::SelfType sess)
 {
+	_guidSet.remove(sess->guid());
+	_sessionMap.remove(sess->id());
 
+	LOGF(TRACE) << "close session[" << sess << "]guid: " << sess->guid() << ", id: " << sess->id();
 }
 
 bool CServer::onLogin(CSession::SelfType sess)
@@ -104,22 +108,29 @@ bool CServer::onLogin(CSession::SelfType sess)
 
 CSession::SelfType CServer::getSession(uint32_t id)
 {
-	return _sessionMap.get(id);
+	boost::weak_ptr<CSession> wptr = _sessionMap.get(id);
+	if (wptr.expired()) {
+		LOGF(DEBUG) << "get session id: " << id << " expired.";
+		return CSession::SelfType(wptr);
+	}
+	CSession::SelfType ss = wptr.lock();
+	return ss;
 }
 
 CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::SelfType dst)
 {
+	asio::ip::address addr = _acceptor.local_endpoint().address();
+	asio::ip::udp::endpoint src_ep(addr, 0);
+	asio::ip::udp::endpoint dst_ep(addr, 0);
+
 	CChannel::SelfType chann(new CChannel(
 			_ioContextPool.getIoContext(),
-			src, dst,
 			allocChannelId(),
-			_acceptor.local_endpoint().address().to_string()));
+			src, dst,
+			src_ep, dst_ep));
 
 	src->addSrcChannel(chann);
 	dst->addDstChannel(chann);
-
-	LOGF(INFO) << "create channel(" << chann->id() << ")"
-			<< ", ip: " << chann->srcEndpoint().address().to_string();
 
 	return chann;
 }

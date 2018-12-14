@@ -50,7 +50,6 @@ public:
 
 	void doRead();
 	void doWrite(StringPtr msg);
-	asio::ip::tcp::socket& socket() { return _socket; }
 
 	void id(uint32_t id) { _id = id; }
 	uint32_t id() { return _id; }
@@ -58,6 +57,7 @@ public:
 	uint32_t remoteAddr() {
 		return _socket.remote_endpoint().address().to_v4().to_uint();
 	}
+	asio::ip::tcp::socket& socket() { return _socket; }
 
 	bool addSrcChannel(CChannel::SelfType chann) {
 		 return _srcChannels.insert(chann->id(), chann);
@@ -87,8 +87,8 @@ private:
 	asio::streambuf _readBuf;
 	MsgQue 			_sendQue;
 
-	util::DataMap<uint32_t, CChannel::SelfType> _srcChannels;
-	util::DataMap<uint32_t, CChannel::SelfType> _dstChannels;
+	util::DataMap<uint32_t, CChannel> _srcChannels;
+	util::DataMap<uint32_t, CChannel> _dstChannels;
 
 	SHeaderPkg		_header;
 	uint32_t 		_id;

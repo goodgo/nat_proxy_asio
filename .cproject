@@ -33,6 +33,9 @@
 									<listOptionValue builtIn="false" value="../src/openssl"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/"/>
 								</option>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.768599373" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ENABLE_BOOST_CONTEXT=ON"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1286170914" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.614256575" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug">
@@ -59,7 +62,7 @@
 								<option id="gnu.cpp.link.option.paths.464398980" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/"/>
 								</option>
-								<option id="gnu.cpp.link.option.other.664675435" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other" valueType="stringList"/>
+								<option id="gnu.cpp.link.option.other.664675435" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<option id="gnu.cpp.link.option.userobjs.584351823" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_thread.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_system.a"/>

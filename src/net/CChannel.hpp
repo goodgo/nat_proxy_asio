@@ -33,9 +33,11 @@ public:
 	typedef boost::shared_ptr<CChannel> SelfType;
 
 	CChannel(asio::io_context& io,
-			boost::shared_ptr<CSession> srcSession,
-			boost::shared_ptr<CSession> dstSession,
-			uint32_t id, std::string ip, uint16_t port = 0);
+			uint32_t id,
+			boost::shared_ptr<CSession> src_session,
+			boost::shared_ptr<CSession> dst_session,
+			asio::ip::udp::endpoint& src_ep,
+			asio::ip::udp::endpoint& dst_ep);
 	~CChannel();
 
 	void start();
@@ -62,8 +64,8 @@ private:
 	asio::io_context& _io_context;
 	asio::io_context::strand _src_strand;
 	asio::io_context::strand _dst_strand;
-	asio::ip::udp::endpoint _src_ep;
-	asio::ip::udp::endpoint _dst_ep;
+	asio::ip::udp::endpoint _src_remote_ep;
+	asio::ip::udp::endpoint _dst_remote_ep;
 	asio::ip::udp::socket _src_socket;
 	asio::ip::udp::socket _dst_socket;
 
@@ -75,6 +77,8 @@ private:
 	char _dst_buf[BUFFSIZE];
 
 	uint32_t _id;
+	uint32_t _src_id;
+	uint32_t _dst_id;
 	bool _src_opened;
 	bool _dst_opened;
 	bool _started;
