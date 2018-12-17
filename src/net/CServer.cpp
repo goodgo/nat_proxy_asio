@@ -13,17 +13,17 @@
 #include "CLogger.hpp"
 
 CServer::CServer(std::string address, uint16_t port, size_t pool_size)
-: _ioContextPool(pool_size)
-, _signalSets(_ioContextPool.getIoContext())
-, _acceptor(_ioContextPool.getIoContext())
-, _sessionPtr()
-, _sessionId(1000)
-, _channelId(1)
+: _io_context_pool(pool_size)
+, _signal_sets(_io_context_pool.getIoContext())
+, _acceptor(_io_context_pool.getIoContext())
+, _session_ptr()
+, _session_id(1000)
+, _channel_id(1)
 , _started(true)
 {
-	_signalSets.add(SIGHUP);
+	_signal_sets.add(SIGHUP);
 
-	_signalSets.async_wait(boost::bind(&CServer::stop, this));
+	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
 
 	asio::ip::tcp::endpoint ep(asio::ip::address::from_string(address), port);
 	_acceptor.open(ep.protocol());
@@ -52,14 +52,14 @@ void CServer::start()
 	LOGF(TRACE) << "start server: " << _acceptor.local_endpoint();
 	_queue.start();
 	startAccept();
-	_ioContextPool.run();
+	_io_context_pool.run();
 }
 
 void CServer::startAccept()
 {
-	_sessionPtr.reset(new CSession(*this, _ioContextPool.getIoContext()));
+	_session_ptr.reset(new CSession(*this, _io_context_pool.getIoContext()));
 	_acceptor.async_accept(
-			_sessionPtr->socket(),
+			_session_ptr->socket(),
 			boost::bind(&CServer::onAccept,
 					this,
 					asio::placeholders::error));
@@ -67,36 +67,36 @@ void CServer::startAccept()
 
 void CServer::onAccept(const boost::system::error_code& ec)
 {
-	LOGF(TRACE) << "accept conn: [" << _sessionPtr->socket().remote_endpoint()
-			    << "] ec: " << ec.message();
+	LOGF(TRACE) << "accept conn: [" << _session_ptr->socket().remote_endpoint()
+			<< "] ec: " << ec.message();
 	if (!ec) {
-		_sessionPtr->start();
+		LOGF(TRACE);
+		_session_ptr->start();
 	}
 	startAccept();
 }
 
 void CServer::closeSession(CSession::SelfType sess)
 {
-	_guidSet.remove(sess->guid());
-	_sessionMap.remove(sess->id());
+	_guid_set.remove(sess->guid());
+	_session_map.remove(sess->id());
+	_queue.del(sess->id());
 
-	LOGF(TRACE) << "close session[" << sess << "]guid: " << sess->guid() << ", id: " << sess->id();
+	LOGF(TRACE) << "session[" << sess->id() << "] [" << sess->guid() << "] close.";
 }
 
 bool CServer::onLogin(CSession::SelfType sess)
 {
-	LOGF(TRACE) << "insert guid: " << sess->guid();
-	if (!_guidSet.insert(sess->guid()))
+	if (!_guid_set.insert(sess->guid()))
 	{
-		LOGF(DEBUG) << "[s:" << sess << "] [guid:" << sess->guid() << "] login failed.";
+		LOGF(ERR) << "[guid: " << sess->guid() << "] insert failed.";
 		return false;
 	}
 
 	sess->id(allocSessionId());
-	LOGF(TRACE) << "insert session: " << sess;
-	if (!_sessionMap.insert(sess->id(), sess))
+	if (!_session_map.insert(sess->id(), sess))
 	{
-		LOGF(DEBUG) << "[s:" << sess << "] [guid:" << sess->guid() << "] login failed.";
+		LOGF(ERR) << "session id[: " << sess->id() << "] insert failed.";
 		return false;
 	}
 
@@ -106,12 +106,12 @@ bool CServer::onLogin(CSession::SelfType sess)
 	return true;
 }
 
-CSession::SelfType CServer::getSession(uint32_t id)
+CSession::SelfType CServer::getSession(CSession::SelfType sess, uint32_t id)
 {
-	boost::weak_ptr<CSession> wptr = _sessionMap.get(id);
+	boost::weak_ptr<CSession> wptr = _session_map.get(id);
 	if (wptr.expired()) {
-		LOGF(DEBUG) << "get session id: " << id << " expired.";
-		return CSession::SelfType(wptr);
+		LOGF(DEBUG) << "session[" << sess->id() << "] get dest[" << id << " ] failed.";
+		return sess;
 	}
 	CSession::SelfType ss = wptr.lock();
 	return ss;
@@ -124,7 +124,7 @@ CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::Self
 	asio::ip::udp::endpoint dst_ep(addr, 0);
 
 	CChannel::SelfType chann(new CChannel(
-			_ioContextPool.getIoContext(),
+			_io_context_pool.getIoContext(),
 			allocChannelId(),
 			src, dst,
 			src_ep, dst_ep));
@@ -135,8 +135,7 @@ CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::Self
 	return chann;
 }
 
-bool CServer::getAllClients(CSession::SelfType sess, std::string& str)
+boost::shared_ptr<std::string> CServer::getAllSessions(CSession::SelfType sess)
 {
-	_queue.get(str);
-	return true;
+	return _queue.get();
 }

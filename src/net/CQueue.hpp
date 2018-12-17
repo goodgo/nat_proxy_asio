@@ -44,17 +44,20 @@ public:
 	void worker();
 	void add(const SClientInfo& info);
 	void del(uint32_t id);
-	void get(std::string& str);
+	boost::shared_ptr<std::string> get();
 
 public:
 	boost::shared_ptr<boost::thread> _thread;
-	boost::mutex _infoMapMutex;
-	boost::mutex _queMutex;
-	boost::condition _queCond;
+	boost::mutex _que_mutex;
+	boost::condition _que_cond;
 	std::deque<QueueItem> _que;
-	InfoMap _sessionInfoMap;
-	int		_serialLen;
-	char	_serial[1024];
+	InfoMap _info_map;
+
+	boost::mutex _mutex;
+	boost::shared_ptr<std::string> _sessions;
+	enum { MAX_LENGTH = 1024 };
+	char	_buff[MAX_LENGTH];
+	int		_buff_len;
 	bool	_started;
 };
 

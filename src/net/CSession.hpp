@@ -28,6 +28,7 @@
 #include <deque>
 
 #include "CChannel.hpp"
+#include "CDataMap.hpp"
 #include "util.hpp"
 
 namespace asio {
@@ -60,10 +61,10 @@ public:
 	asio::ip::tcp::socket& socket() { return _socket; }
 
 	bool addSrcChannel(CChannel::SelfType chann) {
-		 return _srcChannels.insert(chann->id(), chann);
+		 return _src_channels.insert(chann->id(), chann);
 	}
 	bool addDstChannel(CChannel::SelfType chann) {
-		return _dstChannels.insert(chann->id(), chann);
+		return _dst_channels.insert(chann->id(), chann);
 	}
 
 private:
@@ -73,7 +74,7 @@ private:
 
 	void onLogin(boost::shared_ptr<CReqLoginPkg>& pkg);
 	void onAccelate(boost::shared_ptr<CReqAccelationPkg>& pkg);
-	void onGetConsoles(boost::shared_ptr<CReqGetConsolesPkg>& pkg);
+	void onGetSessions(boost::shared_ptr<CReqGetConsolesPkg>& pkg);
 
 	void writeImpl(StringPtr msg);
 	void write();
@@ -84,15 +85,15 @@ private:
 	asio::io_context::strand _strand;
 	asio::ip::tcp::socket _socket;
 	asio::steady_timer _timer;
-	asio::streambuf _readBuf;
-	MsgQue 			_sendQue;
+	asio::streambuf _read_buf;
+	MsgQue 			_send_que;
 
-	util::DataMap<uint32_t, CChannel> _srcChannels;
-	util::DataMap<uint32_t, CChannel> _dstChannels;
+	CDataMap<uint32_t, CChannel> _src_channels;
+	CDataMap<uint32_t, CChannel> _dst_channels;
 
 	SHeaderPkg		_header;
 	uint32_t 		_id;
-	uint32_t		_privateAddr;
+	uint32_t		_private_addr;
 	std::string		_guid;
 	bool 			_logined;
 	bool			_started;

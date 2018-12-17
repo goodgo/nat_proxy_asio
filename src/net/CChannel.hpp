@@ -62,10 +62,13 @@ private:
 
 private:
 	asio::io_context& _io_context;
+
 	asio::io_context::strand _src_strand;
 	asio::io_context::strand _dst_strand;
+
 	asio::ip::udp::endpoint _src_remote_ep;
 	asio::ip::udp::endpoint _dst_remote_ep;
+
 	asio::ip::udp::socket _src_socket;
 	asio::ip::udp::socket _dst_socket;
 
@@ -79,6 +82,7 @@ private:
 	uint32_t _id;
 	uint32_t _src_id;
 	uint32_t _dst_id;
+
 	bool _src_opened;
 	bool _dst_opened;
 	bool _started;

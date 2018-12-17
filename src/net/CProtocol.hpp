@@ -105,23 +105,33 @@ public:
 class CRespPkgBase
 {
 public:
-	virtual ~CRespPkgBase() {};
+	CRespPkgBase() : ucErr(0) {}
+	virtual ~CRespPkgBase() {}
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head) = 0;
 
 protected:
-	virtual uint16_t size() = 0;
+	virtual uint16_t size() const = 0;
+
 public:
-	uint8_t err;
+	uint8_t ucErr;
 };
 
 class CRespLogin : public CRespPkgBase
 {
 public:
+	CRespLogin()
+	: CRespPkgBase()
+	, uiId(0)
+	{}
+	virtual ~CRespLogin(){}
+
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
 
 private:
-	uint16_t size() {
-		return static_cast<uint16_t>(sizeof(err) + sizeof(uiId));
+	uint16_t size() const{
+		return static_cast<uint16_t>(
+				sizeof(ucErr) +
+				sizeof(uiId));
 	}
 
 public:
@@ -131,12 +141,22 @@ public:
 class CRespAccelate : public CRespPkgBase
 {
 public:
-	uint16_t size() {
-		return static_cast<uint16_t>(sizeof(uiUdpAddr) + sizeof(usUdpPort));
-	}
+	CRespAccelate()
+	: CRespPkgBase()
+	, uiUdpAddr(0)
+	, usUdpPort(0)
+	{}
+	virtual ~CRespAccelate(){}
 
-public:
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+
+private:
+	uint16_t size() const{
+		return static_cast<uint16_t>(
+				sizeof(ucErr) +
+				sizeof(uiUdpAddr) +
+				sizeof(usUdpPort));
+	}
 
 public:
 	uint32_t uiUdpAddr;
@@ -146,7 +166,18 @@ public:
 class CRespAccess : public CRespPkgBase
 {
 public:
-	uint16_t size() {
+	CRespAccess()
+	: CRespPkgBase()
+	, uiSrcId(0)
+	, uiUdpAddr(0)
+	, usUdpPort(0)
+	, uiPrivateAddr(0)
+	{}
+	virtual ~CRespAccess(){}
+	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+
+private:
+	uint16_t size() const{
 		return static_cast<uint16_t>(
 				sizeof(uiSrcId) +
 				sizeof(uiUdpAddr) +
@@ -155,26 +186,26 @@ public:
 	}
 
 public:
-	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
-
-public:
 	uint32_t uiSrcId;
 	uint32_t uiUdpAddr;
 	uint16_t usUdpPort;
 	uint32_t uiPrivateAddr;
 };
 
-class CRespGetClients : public CRespPkgBase
+class CRespGetSessions : public CRespPkgBase
 {
 public:
+	CRespGetSessions(): CRespPkgBase(){}
+	virtual ~CRespGetSessions(){}
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
 
 private:
-	uint16_t size() {
-		return info.length();
+	uint16_t size() const{
+		return static_cast<uint16_t>(
+				sessions->length());
 	}
 public:
-	std::string info;
+	boost::shared_ptr<std::string> sessions;
 };
 
 

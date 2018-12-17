@@ -10,12 +10,12 @@
 #include <iostream>
 
 CIoContextPool::CIoContextPool(size_t pool_size)
-: _nextContextIndex(0)
+: _next_context_index(0)
 {
 	for (size_t i = 0; i < pool_size; i++) {
 		io_context_ptr io = boost::make_shared<asio::io_context>();
-		_ioContexts.push_back(io);
-		_ioContextWorks.push_back(asio::make_work_guard(*io));
+		_io_contexts.push_back(io);
+		_io_context_works.push_back(asio::make_work_guard(*io));
 	}
 }
 
@@ -27,9 +27,9 @@ CIoContextPool::~CIoContextPool()
 void CIoContextPool::run()
 {
 	std::vector<boost::shared_ptr<boost::thread> > threads;
-	for (size_t i = 0; i < _ioContexts.size(); i++) {
+	for (size_t i = 0; i < _io_contexts.size(); i++) {
 		boost::shared_ptr<boost::thread> t(new boost::thread(
-				boost::bind(&asio::io_context::run, _ioContexts[i])));
+				boost::bind(&asio::io_context::run, _io_contexts[i])));
 		threads.push_back(t);
 	}
 
@@ -40,16 +40,16 @@ void CIoContextPool::run()
 
 void CIoContextPool::stop()
 {
-	for (size_t i = 0; i < _ioContexts.size(); i++)
-		_ioContexts[i]->stop();
+	for (size_t i = 0; i < _io_contexts.size(); i++)
+		_io_contexts[i]->stop();
 }
 
 asio::io_context& CIoContextPool::getIoContext()
 {
-	asio::io_context& io = *_ioContexts[_nextContextIndex];
-	++_nextContextIndex;
-	if (_nextContextIndex == _ioContexts.size())
-		_nextContextIndex = 0;
+	asio::io_context& io = *_io_contexts[_next_context_index];
+	++_next_context_index;
+	if (_next_context_index == _io_contexts.size())
+		_next_context_index = 0;
 
 	return io;
 }
