@@ -304,4 +304,5 @@ void CSession::onGetSessions(boost::shared_ptr<CReqGetConsolesPkg>& req)
 		msg = resp.serialize(req->header);
 	}
 	doWrite(msg);
+	LOG(TRACE) << "session[" << _id << "] get sessions: " << util::to_hex(*msg);
 }

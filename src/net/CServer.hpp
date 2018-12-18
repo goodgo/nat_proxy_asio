@@ -18,11 +18,11 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
+#include <CSessionDb.hpp>
 
 #include "CIoContextPool.hpp"
 #include "CSession.hpp"
 #include "CChannel.hpp"
-#include "CQueue.hpp"
 #include "CDataSet.hpp"
 #include "CDataMap.hpp"
 #include "util.hpp"
@@ -58,7 +58,7 @@ private:
 
 	CDataSet<std::string> _guid_set;
 	CDataMap<uint32_t, CSession> _session_map;
-	CQueue _queue;
+	CSessionDb _session_db;
 
 	boost::atomic<uint32_t> _session_id;
 	boost::atomic<uint32_t> _channel_id;

@@ -44,13 +44,13 @@ void CServer::stop()
 {
 	LOGF(WARNING) << "server stop.";
 	_started = false;
-	_queue.stop();
+	_session_db.stop();
 }
 
 void CServer::start()
 {
 	LOGF(TRACE) << "start server: " << _acceptor.local_endpoint();
-	_queue.start();
+	_session_db.start();
 	startAccept();
 	_io_context_pool.run();
 }
@@ -80,7 +80,7 @@ void CServer::closeSession(CSession::SelfType sess)
 {
 	_guid_set.remove(sess->guid());
 	_session_map.remove(sess->id());
-	_queue.del(sess->id());
+	_session_db.del(sess->id());
 
 	LOGF(TRACE) << "session[" << sess->id() << "] [" << sess->guid() << "] close.";
 }
@@ -100,8 +100,8 @@ bool CServer::onLogin(CSession::SelfType sess)
 		return false;
 	}
 
-	SClientInfo info(sess->id(), sess->remoteAddr());
-	_queue.add(info);
+	SSessionInfo info(sess->id(), sess->remoteAddr());
+	_session_db.add(info);
 
 	return true;
 }
@@ -137,5 +137,5 @@ CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::Self
 
 boost::shared_ptr<std::string> CServer::getAllSessions(CSession::SelfType sess)
 {
-	return _queue.get();
+	return _session_db.output();
 }

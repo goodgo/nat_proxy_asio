@@ -47,16 +47,21 @@ typedef struct
 	uint16_t usBodyLen;
 }SHeaderPkg;
 
-class SClientInfo
+class SSessionInfo
 {
 public:
-	SClientInfo() : uiId(0), uiAddr(0) {}
-	SClientInfo(uint32_t id, uint32_t addr) : uiId(id), uiAddr(addr) {}
-	SClientInfo& operator=(const SClientInfo& info)
+	SSessionInfo() : uiId(0), uiAddr(0) {}
+	SSessionInfo(uint32_t id, uint32_t addr) : uiId(id), uiAddr(addr) {}
+	SSessionInfo& operator=(const SSessionInfo& info)
 	{
 		uiId = info.uiId;
 		uiAddr = info.uiAddr;
 		return *this;
+	}
+	static uint8_t size() {
+		return static_cast<uint8_t>(
+				sizeof(uiId)+
+				sizeof(uiAddr));
 	}
 	uint32_t uiId;
 	uint32_t uiAddr;

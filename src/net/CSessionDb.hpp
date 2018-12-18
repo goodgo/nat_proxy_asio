@@ -1,12 +1,12 @@
 /*
- * CQueue.hpp
+ * CSessionDb.hpp
  *
  *  Created on: Dec 11, 2018
  *      Author: root
  */
 
-#ifndef SRC_NET_CQUEUE_HPP_
-#define SRC_NET_CQUEUE_HPP_
+#ifndef SRC_NET_CSESSIONDB_HPP_
+#define SRC_NET_CSESSIONDB_HPP_
 
 #include <map>
 #include <string>
@@ -29,37 +29,42 @@ enum
 typedef struct
 {
 	uint8_t op;
-	SClientInfo info;
-}QueueItem;
+	SSessionInfo info;
+}OperationItem;
 
-class CQueue
+class CSessionDb
 {
 public:
-	typedef std::map<uint32_t, SClientInfo> InfoMap;
+	typedef std::map<uint32_t, SSessionInfo> DbMap;
+	typedef std::deque<OperationItem> OperationStack;
+	typedef boost::shared_ptr<std::string> OutBuff;
 
-	CQueue();
-	~CQueue();
+	CSessionDb();
+	~CSessionDb();
 	void stop();
 	void start();
 	void worker();
-	void add(const SClientInfo& info);
+	void add(const SSessionInfo& info);
 	void del(uint32_t id);
-	boost::shared_ptr<std::string> get();
+	OutBuff output();
+
+private:
+	void operate();
+	void serial();
 
 public:
 	boost::shared_ptr<boost::thread> _thread;
-	boost::mutex _que_mutex;
-	boost::condition _que_cond;
-	std::deque<QueueItem> _que;
-	InfoMap _info_map;
+	DbMap _db;
+	boost::mutex _op_mutex;
+	boost::condition _op_cond;
+	OperationStack _op_stack;
 
-	boost::mutex _mutex;
-	boost::shared_ptr<std::string> _sessions;
-	enum { MAX_LENGTH = 1024 };
+	boost::mutex _out_mutex;
+	OutBuff _out_buff;
+	enum { MAX_LENGTH = 2048 };
 	char	_buff[MAX_LENGTH];
 	int		_buff_len;
 	bool	_started;
 };
 
-
-#endif /* SRC_NET_CQUEUE_HPP_ */
+#endif /* SRC_NET_CSESSIONDB_HPP_ */
