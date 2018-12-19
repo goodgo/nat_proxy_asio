@@ -22,6 +22,7 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 , _started(true)
 {
 	_signal_sets.add(SIGHUP);
+	_signal_sets.add(SIGTERM);
 
 	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
 
@@ -82,20 +83,18 @@ void CServer::closeSession(CSession::SelfType sess)
 	_session_map.remove(sess->id());
 	_session_db.del(sess->id());
 
-	LOGF(TRACE) << "session[" << sess->id() << "] [" << sess->guid() << "] close.";
+	LOGF(TRACE) << "server close session[" << sess->id() << "] [" << sess->guid() << "]";
 }
 
 bool CServer::onLogin(CSession::SelfType sess)
 {
-	if (!_guid_set.insert(sess->guid()))
-	{
+	if (!_guid_set.insert(sess->guid())) {
 		LOGF(ERR) << "[guid: " << sess->guid() << "] insert failed.";
 		return false;
 	}
 
 	sess->id(allocSessionId());
-	if (!_session_map.insert(sess->id(), sess))
-	{
+	if (!_session_map.insert(sess->id(), sess)) {
 		LOGF(ERR) << "session id[: " << sess->id() << "] insert failed.";
 		return false;
 	}

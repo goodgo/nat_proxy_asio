@@ -107,6 +107,8 @@ public:
 };
 
 /////////////////////////////////////////////////////////////////
+typedef boost::shared_ptr<std::string> StringPtr;
+
 class CRespPkgBase
 {
 public:
@@ -153,7 +155,7 @@ public:
 	{}
 	virtual ~CRespAccelate(){}
 
-	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+	virtual StringPtr serialize(const SHeaderPkg& head);
 
 private:
 	uint16_t size() const{
@@ -179,7 +181,7 @@ public:
 	, uiPrivateAddr(0)
 	{}
 	virtual ~CRespAccess(){}
-	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+	virtual StringPtr serialize(const SHeaderPkg& head);
 
 private:
 	uint16_t size() const{
@@ -202,7 +204,7 @@ class CRespGetSessions : public CRespPkgBase
 public:
 	CRespGetSessions(): CRespPkgBase(){}
 	virtual ~CRespGetSessions(){}
-	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+	virtual StringPtr serialize(const SHeaderPkg& head);
 
 private:
 	uint16_t size() const{
@@ -210,8 +212,29 @@ private:
 				sessions->length());
 	}
 public:
-	boost::shared_ptr<std::string> sessions;
+	StringPtr sessions;
 };
 
+class CRespStopAccelate : public CRespPkgBase
+{
+public:
+	CRespStopAccelate()
+	: CRespPkgBase()
+	, uiUdpAddr(0)
+	, usUdpPort(0)
+	{}
+	virtual ~CRespStopAccelate(){}
+	virtual StringPtr serialize(const SHeaderPkg& head);
 
+private:
+	uint16_t size() const{
+		return static_cast<uint16_t>(
+				sizeof(uiUdpAddr) +
+				sizeof(usUdpPort)
+				);
+	}
+public:
+	uint32_t uiUdpAddr;
+	uint16_t usUdpPort;
+};
 #endif /* SRC_NET_CPROTOCOL_HPP_ */

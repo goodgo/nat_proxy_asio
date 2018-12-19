@@ -56,11 +56,9 @@ bool CReqGetConsolesPkg::deserialize(const char* p, const size_t n)
 	return true;
 }
 
-boost::shared_ptr<std::string>
-CRespLogin::serialize(const SHeaderPkg& head)
+StringPtr CRespLogin::serialize(const SHeaderPkg& head)
 {
 	uint16_t bodylen = size();
-	LOGF(TRACE) << "bodylen: " << bodylen;
 	size_t len = sizeof(SHeaderPkg) + bodylen;
 	char* buf = new char[len + 1]();
 	memcpy(buf, &head, sizeof(head));
@@ -68,14 +66,13 @@ CRespLogin::serialize(const SHeaderPkg& head)
 	buf[8] = ucErr;
 	memcpy(buf + 9, &uiId, 4);
 
-	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	LOGF(TRACE) << "login package: " << util::to_hex(*msg);
 	delete[] buf;
 	return msg;
 }
 
-boost::shared_ptr<std::string>
-CRespAccelate::serialize(const SHeaderPkg& head)
+StringPtr CRespAccelate::serialize(const SHeaderPkg& head)
 {
 	uint16_t bodylen = size();
 	size_t len = sizeof(SHeaderPkg) + bodylen;
@@ -86,14 +83,13 @@ CRespAccelate::serialize(const SHeaderPkg& head)
 	memcpy(buf + 9, &uiUdpAddr, 4);
 	memcpy(buf + 9 + 4, &usUdpPort, 2);
 
-	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return msg;
 }
 
 
-boost::shared_ptr<std::string>
-CRespAccess::serialize(const SHeaderPkg& head)
+StringPtr CRespAccess::serialize(const SHeaderPkg& head)
 {
 	uint16_t bodylen = size();
 	size_t len = sizeof(SHeaderPkg) + bodylen;
@@ -105,13 +101,12 @@ CRespAccess::serialize(const SHeaderPkg& head)
 	memcpy(buf + 8 + 4 + 4, &usUdpPort, 2);
 	memcpy(buf + 8 + 4 + 4 + 2, &uiPrivateAddr, 4);
 
-	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return msg;
 }
 
-boost::shared_ptr<std::string>
-CRespGetSessions::serialize(const SHeaderPkg& head)
+StringPtr CRespGetSessions::serialize(const SHeaderPkg& head)
 {
 	uint16_t bodylen = size();
 	size_t len = sizeof(SHeaderPkg) + bodylen;
@@ -120,7 +115,22 @@ CRespGetSessions::serialize(const SHeaderPkg& head)
 	memcpy(buf + 6, &bodylen, 2);
 	memcpy(buf + 8, sessions->c_str(), sessions->length());
 
-	boost::shared_ptr<std::string> msg = boost::make_shared<std::string>(buf, len);
+	StringPtr msg = boost::make_shared<std::string>(buf, len);
+	delete[] buf;
+	return msg;
+}
+
+StringPtr CRespStopAccelate::serialize(const SHeaderPkg& head)
+{
+	uint16_t bodylen = size();
+	size_t len = sizeof(SHeaderPkg) + bodylen;
+	char* buf = new char[len + 1]();
+	memcpy(buf, &head, sizeof(head));
+	memcpy(buf + 6, &bodylen, 2);
+	memcpy(buf + 8, &uiUdpAddr, 4);
+	memcpy(buf + 8 + 4, &usUdpPort, 2);
+
+	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return msg;
 }

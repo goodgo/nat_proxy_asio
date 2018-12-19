@@ -1,25 +1,30 @@
 /*
- * CDataMap.hpp
+ * CSafeMap.hpp
  *
  *  Created on: Dec 17, 2018
  *      Author: root
  */
 
-#ifndef SRC_UTIL_CDATAMAP_HPP_
-#define SRC_UTIL_CDATAMAP_HPP_
+#ifndef SRC_UTIL_CSAFEMAP_HPP_
+#define SRC_UTIL_CSAFEMAP_HPP_
 
 #include <boost/thread/mutex.hpp>
 #include <boost/unordered/unordered_map.hpp>
 
 
 template<typename K, typename V>
-class CDataMap
+class CSafeMap
 {
 public:
 	typedef boost::weak_ptr<V> ValuePtr;
 	typedef boost::unordered_map<K, ValuePtr> Container;
 	typedef typename Container::value_type value_type;
 	typedef typename Container::iterator iterator;
+
+	size_t size() {
+		boost::mutex::scoped_lock lk(_mutex);
+		return _container.size();
+	}
 
 	bool insert(const K& key, ValuePtr value) {
 		boost::mutex::scoped_lock lk(_mutex);
@@ -70,4 +75,4 @@ private:
 	boost::mutex _mutex;
 };
 
-#endif /* SRC_UTIL_CDATAMAP_HPP_ */
+#endif /* SRC_UTIL_CSAFEMAP_HPP_ */

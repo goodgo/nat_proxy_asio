@@ -13,10 +13,8 @@
 int main()
 {
 	InitLog("/usr/local/log/");
-	CServer server("172.16.31.190", 10001, 4);
+	CServer server("172.16.31.191", 10001, 4);
 	server.start();
 
 	return 0;
 }
-
-

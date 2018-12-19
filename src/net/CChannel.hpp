@@ -16,6 +16,10 @@
 #include <boost/make_shared.hpp>
 #include <boost/system/error_code.hpp>
 
+#include <boost/thread/mutex.hpp>
+#include <boost/unordered/unordered_map.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
+
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/udp.hpp>
@@ -41,6 +45,7 @@ public:
 	~CChannel();
 
 	void start();
+	void toStop();
 	void stop();
 
 	asio::ip::udp::socket& srcSocket() { return _src_socket; }
@@ -88,5 +93,61 @@ private:
 	bool _started;
 };
 
+
+class CChannelMap
+{
+public:
+	typedef uint32_t	ChannelId;
+	typedef boost::unordered_map<ChannelId, CChannel::SelfType> Map;
+
+	size_t size() {
+		boost::mutex::scoped_lock lk(_mutex);
+		return _map.size();
+	}
+
+	bool insert(const ChannelId& id, CChannel::SelfType value) {
+		boost::mutex::scoped_lock lk(_mutex);
+		if (_map.end() != _map.find(id))
+			return false;
+
+		_map.insert(Map::value_type(id, value));
+		return true;
+	}
+
+	bool remove(const ChannelId& id) {
+		boost::mutex::scoped_lock lk(_mutex);
+		Map::iterator it = _map.find(id);
+		if (_map.end() == it)
+			return false;
+
+		_map.erase(it);
+		return true;
+	}
+
+	bool has(const ChannelId& id) {
+		boost::mutex::scoped_lock lk(_mutex);
+		if (_map.end() == _map.find(id)) {
+			return false;
+		}
+		return true;
+	}
+
+	CChannel::SelfType get(const ChannelId& id) {
+		boost::mutex::scoped_lock lk(_mutex);
+		return _map[id];
+	}
+
+	void stopAll() {
+		boost::mutex::scoped_lock lk(_mutex);
+		for (Map::iterator it = _map.begin(); it != _map.end();) {
+			it->second->toStop();
+			it = _map.erase(it);
+		}
+	}
+
+private:
+	boost::mutex _mutex;
+	Map _map;
+};
 
 #endif /* SRC_NET_CCHANNEL_HPP_ */

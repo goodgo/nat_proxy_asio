@@ -30,23 +30,23 @@ CSession::CSession(CServer& server, asio::io_context& io_context)
 
 CSession::~CSession()
 {
-	LOGF(TRACE) << "session[" << _id << "] destroy.";
 	stop();
+	LOGF(TRACE) << "session[" << _id << "] destroy.";
 }
 
 void CSession::stop()
 {
 	if (_started)
 	{
-		LOGF(WARNING) << "session[" << _id << "] stop.";
 		_started = false;
 		boost::system::error_code ec;
 		_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
 		_socket.close(ec);
 		_timer.cancel(ec);
 		_server.closeSession(shared_from_this());
-		LOGF(DEBUG) << "session[" << _id << "] remove all src channel.";
-		_src_channels.removeAll();
+		_src_channels.stopAll();
+		_dst_channels.stopAll();
+		LOGF(DEBUG) << "session[" << _id << "] stopped.";
 	}
 }
 
@@ -305,4 +305,52 @@ void CSession::onGetSessions(boost::shared_ptr<CReqGetConsolesPkg>& req)
 	}
 	doWrite(msg);
 	LOG(TRACE) << "session[" << _id << "] get sessions: " << util::to_hex(*msg);
+}
+
+bool CSession::addSrcChannel(CChannel::SelfType chann)
+{
+	bool ret = _src_channels.insert(chann->id(), chann);
+	LOG(INFO) << "session[" << _id << "] has src channels: " << _src_channels.size()
+			<< ", dst channels: " << _dst_channels.size();
+	return ret;
+}
+
+bool CSession::addDstChannel(CChannel::SelfType chann)
+{
+	bool ret =  _dst_channels.insert(chann->id(), chann);
+	LOG(INFO) << "session[" << _id << "] has dst channels: " << _dst_channels.size()
+			<< ", src channels: " << _src_channels.size();
+	return ret;
+}
+
+void CSession::closeSrcChannel(CChannel::SelfType chann)
+{
+	LOGF(TRACE) << "session[" << _id << "] close channel: " << chann->id();
+	_src_channels.remove(chann->id());
+	onStopAccelate(chann->srcEndpoint());
+}
+
+void CSession::closeDstChannel(CChannel::SelfType chann)
+{
+	LOGF(TRACE) << "session[" << _id << "] close channel: " << chann->id();
+	_dst_channels.remove(chann->id());
+	onStopAccelate(chann->dstEndpoint());
+}
+
+void CSession::onStopAccelate(asio::ip::udp::socket::endpoint_type ep)
+{
+	CRespStopAccelate resp;
+
+	resp.uiUdpAddr = ep.address().to_v4().to_uint();
+	resp.usUdpPort = ep.port();
+	SHeaderPkg header;
+	header.ucHead1 = 0xDD;
+	header.ucHead2 = 0x05;
+	header.ucSvrVersion = 0x01;
+	header.ucSvrVersion = 0x02;
+	header.ucFunc = EN_FUNC::STOP_ACCELATE;
+	header.ucKeyIndex = 0x00;
+
+	StringPtr msg = resp.serialize(header);
+	doWrite(msg);
 }

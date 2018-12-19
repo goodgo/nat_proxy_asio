@@ -18,13 +18,14 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
+#include <CSafeMap.hpp>
 #include <CSessionDb.hpp>
 
 #include "CIoContextPool.hpp"
 #include "CSession.hpp"
 #include "CChannel.hpp"
-#include "CDataSet.hpp"
-#include "CDataMap.hpp"
+#include "CSafeSet.hpp"
+#include "CSafeMap.hpp"
 #include "util.hpp"
 
 namespace asio {
@@ -56,8 +57,8 @@ private:
 	asio::ip::tcp::acceptor _acceptor;
 	CSession::SelfType _session_ptr;
 
-	CDataSet<std::string> _guid_set;
-	CDataMap<uint32_t, CSession> _session_map;
+	CSafeSet<std::string> _guid_set;
+	CSafeMap<uint32_t, CSession> _session_map;
 	CSessionDb _session_db;
 
 	boost::atomic<uint32_t> _session_id;

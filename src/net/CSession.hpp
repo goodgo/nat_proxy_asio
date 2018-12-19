@@ -28,7 +28,7 @@
 #include <deque>
 
 #include "CChannel.hpp"
-#include "CDataMap.hpp"
+#include "CSafeMap.hpp"
 #include "util.hpp"
 
 namespace asio {
@@ -41,31 +41,30 @@ class CSession : public boost::enable_shared_from_this<CSession>
 {
 public:
 	typedef boost::shared_ptr<CSession> SelfType;
-	typedef boost::shared_ptr<std::string> StringPtr;
 	typedef std::deque<StringPtr > MsgQue;
 
 	CSession(CServer& server, asio::io_context& io_context);
 	~CSession();
 	void start();
 	void stop();
+	bool isRuning() { return _started; }
 
 	void doRead();
 	void doWrite(StringPtr msg);
 
+	std::string& guid() { return _guid; }
 	void id(uint32_t id) { _id = id; }
 	uint32_t id() { return _id; }
-	std::string& guid() { return _guid; }
 	uint32_t remoteAddr() {
 		return _socket.remote_endpoint().address().to_v4().to_uint();
 	}
 	asio::ip::tcp::socket& socket() { return _socket; }
 
-	bool addSrcChannel(CChannel::SelfType chann) {
-		 return _src_channels.insert(chann->id(), chann);
-	}
-	bool addDstChannel(CChannel::SelfType chann) {
-		return _dst_channels.insert(chann->id(), chann);
-	}
+	bool addSrcChannel(CChannel::SelfType chann);
+	bool addDstChannel(CChannel::SelfType chann);
+
+	void closeSrcChannel(CChannel::SelfType chann);
+	void closeDstChannel(CChannel::SelfType chann);
 
 private:
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
@@ -75,6 +74,7 @@ private:
 	void onLogin(boost::shared_ptr<CReqLoginPkg>& pkg);
 	void onAccelate(boost::shared_ptr<CReqAccelationPkg>& pkg);
 	void onGetSessions(boost::shared_ptr<CReqGetConsolesPkg>& pkg);
+	void onStopAccelate(asio::ip::udp::socket::endpoint_type ep);
 
 	void writeImpl(StringPtr msg);
 	void write();
@@ -88,8 +88,8 @@ private:
 	asio::streambuf _read_buf;
 	MsgQue 			_send_que;
 
-	CDataMap<uint32_t, CChannel> _src_channels;
-	CDataMap<uint32_t, CChannel> _dst_channels;
+	CChannelMap 	_src_channels;
+	CChannelMap		_dst_channels;
 
 	SHeaderPkg		_header;
 	uint32_t 		_id;

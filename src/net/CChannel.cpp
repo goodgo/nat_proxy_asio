@@ -30,7 +30,7 @@ CChannel::CChannel(asio::io_context& io,
 , _dst_id(dst_session->id())
 , _src_opened(false)
 , _dst_opened(false)
-, _started(false)
+, _started(true)
 {
 	_src_remote_ep = asio::ip::udp::endpoint(src_session->socket().remote_endpoint().address(), 0);
 	_dst_remote_ep = asio::ip::udp::endpoint(dst_session->socket().remote_endpoint().address(), 0);
@@ -43,8 +43,17 @@ CChannel::CChannel(asio::io_context& io,
 
 CChannel::~CChannel()
 {
-	LOGF(TRACE) << _id;
 	stop();
+	LOG(TRACE) << "channel[" << _id << "] destroy.";
+}
+
+void CChannel::toStop()
+{
+	_io_context.post(
+			_src_strand.wrap(boost::bind(&CChannel::stop, shared_from_this()))
+	);
+	LOG(TRACE) << "channel[" << _id << "] ("<< _src_id
+			<< ") --> (" << _dst_id << ") will be stopped.";
 }
 
 void CChannel::stop()
@@ -59,10 +68,20 @@ void CChannel::stop()
 		_dst_socket.shutdown(asio::ip::udp::socket::shutdown_both, ec);
 		_dst_socket.cancel(ec);
 
-		//_src_session.reset();
-		//_dst_session.reset();
+		if (!_src_session.expired()) {
+			CSession::SelfType s = _src_session.lock();
+			if (s->isRuning()) {
+				s->closeSrcChannel(shared_from_this());
+			}
+		}
 
-		LOGF(INFO) << "close channel: " << _id;
+		if (!_dst_session.expired()) {
+			CSession::SelfType s = _dst_session.lock();
+			if (s->isRuning()) {
+				s->closeDstChannel(shared_from_this());
+			}
+		}
+		LOG(INFO) << "channel[" << _id << "] stopped.";
 	}
 }
 
@@ -75,7 +94,6 @@ void CChannel::start()
 			<< " --> " << _dst_remote_ep.address().to_string()
 			<< "]("    << _dst_id << ") opened.";
 
-	_started = true;
 	asio::spawn(_src_strand, boost::bind(&CChannel::uploader, shared_from_this(), boost::placeholders::_1));
 	asio::spawn(_dst_strand, boost::bind(&CChannel::downloader, shared_from_this(), boost::placeholders::_1));
 }
@@ -86,7 +104,7 @@ void CChannel::uploader(asio::yield_context yield)
 	boost::system::error_code ec;
 	asio::ip::udp::endpoint ep;
 	size_t bytes = 0;
-	while(!_src_opened) {
+	while(_started && !_src_opened) {
 
 		LOG(TRACE) << "channel[" << _id << "] ("<< _src_id
 				<< ")["    << _src_remote_ep.address().to_string()
@@ -171,6 +189,7 @@ void CChannel::uploader(asio::yield_context yield)
 				<< "]("    << _dst_id << ") upload: " << bytes << " bytes.";
 		*/
 	}
+	LOG(TRACE) << "channel[" << _id << "] uploader exit!";
 }
 
 void CChannel::downloader(asio::yield_context yield)
@@ -178,14 +197,14 @@ void CChannel::downloader(asio::yield_context yield)
 	boost::system::error_code ec;
 	asio::ip::udp::endpoint ep;
 	size_t bytes = 0;
-	while(!_dst_opened) {
+	while(_started && !_dst_opened) {
 
 		LOG(TRACE) << "channel[" << _id << "] (" << _src_id
 				<< ")["    << _src_remote_ep.address().to_string()
 				<< " <-- " << _src_socket.local_endpoint().port()
 				<< " <-- " << _dst_socket.local_endpoint().port()
 				<< " <-- " << _dst_remote_ep.address().to_string()
-				<< "]("    << _dst_id << ") dst auth.";
+				<< "]("    << _dst_id << ") dst start auth.";
 
 		bytes = _dst_socket.async_receive_from(asio::buffer(_dst_buf), ep, yield[ec]);
 		if (ec || bytes <= 0) {
@@ -252,4 +271,5 @@ void CChannel::downloader(asio::yield_context yield)
 				<< "]("    << _dst_id << ") download: " << bytes << " bytes.";
 				*/
 	}
+	LOG(TRACE) << "channel[" << _id << "] downloader exit!";
 }
