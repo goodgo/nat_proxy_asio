@@ -36,9 +36,6 @@ CChannel::CChannel(asio::io_context& io,
 	_dst_remote_ep = asio::ip::udp::endpoint(dst_session->socket().remote_endpoint().address(), 0);
 	_src_socket.set_option(asio::ip::udp::socket::reuse_address(true));
 	_dst_socket.set_option(asio::ip::udp::socket::reuse_address(true));
-
-	//_src_socket.bind(_src_ep);
-	//_dst_socket.bind(_dst_ep);
 }
 
 CChannel::~CChannel()
@@ -158,6 +155,11 @@ void CChannel::uploader(asio::yield_context yield)
 			<< " --> " << _dst_remote_ep.address().to_string()
 			<< "]("    << _dst_id << ") start upload.";
 
+	_src_socket.bind(ep, ec);
+	if (ec) {
+		LOG(TRACE) << "channel[" << _id << "] uploader bind failed: " << ec.message();
+	}
+
 	while (_started) {
 		bytes = _src_socket.async_receive_from(asio::buffer(_src_buf), ep, yield[ec]);
 		if (ec || bytes <= 0) {
@@ -239,6 +241,11 @@ void CChannel::downloader(asio::yield_context yield)
 			<< " <-- " << _dst_socket.local_endpoint().port()
 			<< " <-- " << _dst_remote_ep.address().to_string()
 			<< "]("    << _dst_id << ") start download.";
+
+	_dst_socket.bind(ep, ec);
+	if (ec) {
+		LOG(TRACE) << "channel[" << _id << "] downloader bind failed: " << ec.message();
+	}
 
 	while (_started) {
 		bytes = _dst_socket.async_receive_from(asio::buffer(_dst_buf), ep, yield[ec]);

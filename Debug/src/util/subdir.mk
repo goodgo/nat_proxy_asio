@@ -4,13 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../src/util/CLogger.cpp 
+../src/util/CLogger.cpp \
+../src/util/util.cpp 
 
 OBJS += \
-./src/util/CLogger.o 
+./src/util/CLogger.o \
+./src/util/util.o 
 
 CPP_DEPS += \
-./src/util/CLogger.d 
+./src/util/CLogger.d \
+./src/util/util.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

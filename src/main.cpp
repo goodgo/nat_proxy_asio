@@ -7,13 +7,19 @@
 
 #include "CLogger.hpp"
 #include "CServer.hpp"
-#include <iostream>
-#include <string>
+#include "util.hpp"
 
 int main()
 {
 	InitLog("/usr/local/log/");
-	CServer server("172.16.31.191", 10001, 4);
+	/*
+	if (!util::daemon()) {
+		LOG(ERR) << "daemon failed.";
+		FinitLog();
+		return 0;
+	}
+	*/
+	CServer server("172.16.31.192", 10001, 4);
 	server.start();
 
 	return 0;

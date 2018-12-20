@@ -11,6 +11,7 @@
 #include <boost/thread/thread.hpp>
 #include <boost/asio/io_context.hpp>
 #include "CLogger.hpp"
+#include "version.h"
 
 CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 : _io_context_pool(pool_size)
@@ -21,7 +22,6 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 , _channel_id(1)
 , _started(true)
 {
-	_signal_sets.add(SIGHUP);
 	_signal_sets.add(SIGTERM);
 
 	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
@@ -39,6 +39,7 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 CServer::~CServer()
 {
 	LOGF(TRACE);
+	FinitLog();
 }
 
 void CServer::stop()
@@ -50,7 +51,8 @@ void CServer::stop()
 
 void CServer::start()
 {
-	LOGF(TRACE) << "start server: " << _acceptor.local_endpoint();
+	LOG(TRACE) << "start server: " << _acceptor.local_endpoint()
+			<< ", version: " << SERVER_VERSION_DATE << " <buildin: " << BUILD_VERSION << ">";
 	_session_db.start();
 	startAccept();
 	_io_context_pool.run();

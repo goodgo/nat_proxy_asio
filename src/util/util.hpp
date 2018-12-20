@@ -11,6 +11,7 @@
 #include <string>
 #include <iomanip>
 #include <boost/spirit/include/karma.hpp>
+#include "CLogger.hpp"
 
 namespace util {
 	inline std::string to_hex(const char*pbuf, const size_t len)
@@ -32,6 +33,8 @@ namespace util {
 	{
 		return to_hex(arr, N);
 	}
+
+	bool daemon();
 }
 
 
