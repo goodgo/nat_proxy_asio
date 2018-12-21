@@ -10,13 +10,14 @@
 
 #include <boost/thread/mutex.hpp>
 #include <boost/unordered/unordered_map.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 
 template<typename K, typename V>
 class CSafeMap
 {
 public:
-	typedef boost::weak_ptr<V> ValuePtr;
+	typedef boost::shared_ptr<V> ValuePtr;
 	typedef boost::unordered_map<K, ValuePtr> Container;
 	typedef typename Container::value_type value_type;
 	typedef typename Container::iterator iterator;
@@ -60,13 +61,8 @@ public:
 
 	void removeAll() {
 		boost::mutex::scoped_lock lk(_mutex);
-		iterator it = _container.begin();
-		for (; it != _container.end(); ++it) {
-			if (!it->second.expired()) {
-				boost::shared_ptr<V> p = it->second.lock();
-				p.reset();
-			}
-			_container.erase(it);
+		for (iterator it = _container.begin(); it != _container.end(); ) {
+			it = _container.erase(it);
 		}
 	}
 

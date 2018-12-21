@@ -10,13 +10,14 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <iostream>
 
 namespace util {
-bool daemon()
+	bool daemon()
 	{
 	 	if (signal(SIGINT, SIG_IGN) == SIG_ERR) return false;
 		if (signal(SIGHUP, SIG_IGN) == SIG_ERR) return false;
-		if (signal(SIGQUIT, SIG_IGN) == SIG_ERR) return false;
+		//if (signal(SIGQUIT, SIG_IGN) == SIG_ERR) return false;
 		if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return false;
 		if (signal(SIGTTOU, SIG_IGN) == SIG_ERR) return false;
 		if (signal(SIGTTIN, SIG_IGN) == SIG_ERR) return false;
@@ -25,13 +26,13 @@ bool daemon()
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	LOG(FATAL) << "fork() failed.";
+	    	std::cerr << "fork() failed." << std::endl;
 	        return false;
 	    }
 
 	    int ret = setsid();
 	    if (ret < 0) {
-	    	LOG(FATAL) << "setsid() failed.";
+	    	std::cerr << "setsid() failed." << std::endl;
 	        return false;
 	    }
 
@@ -39,7 +40,7 @@ bool daemon()
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	LOG(FATAL) << "fork() failed.";
+	    	std::cerr << "fork() failed." << std::endl;
 	        return false;
 	    }
 
@@ -48,7 +49,7 @@ bool daemon()
 
 	    ret = chdir("/");
 	    if (ret < 0) {
-	    	LOG(FATAL) << "chdir(\"/\") failed.";
+	    	std::cerr << "chdir(\"/\") failed." << std::endl;
 	        return false;
 	    }
 

@@ -8,9 +8,11 @@
 #include <boost/thread/thread.hpp>
 #include <boost/bind.hpp>
 #include <iostream>
+#include "CLogger.hpp"
 
 CIoContextPool::CIoContextPool(size_t pool_size)
 : _next_context_index(0)
+, _started(true)
 {
 	for (size_t i = 0; i < pool_size; i++) {
 		io_context_ptr io = boost::make_shared<asio::io_context>();
@@ -21,7 +23,8 @@ CIoContextPool::CIoContextPool(size_t pool_size)
 
 CIoContextPool::~CIoContextPool()
 {
-
+	stop();
+	LOGF(TRACE) << "io_context pool destroy.";
 }
 
 void CIoContextPool::run()
@@ -40,8 +43,11 @@ void CIoContextPool::run()
 
 void CIoContextPool::stop()
 {
-	for (size_t i = 0; i < _io_contexts.size(); i++)
-		_io_contexts[i]->stop();
+	if (_started) {
+		_started = false;
+		for (size_t i = 0; i < _io_contexts.size(); i++)
+			_io_contexts[i]->stop();
+	}
 }
 
 asio::io_context& CIoContextPool::getIoContext()

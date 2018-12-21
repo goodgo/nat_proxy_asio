@@ -17,6 +17,7 @@
 #include <boost/system/error_code.hpp>
 
 #include <boost/thread/mutex.hpp>
+#include <boost/atomic.hpp>
 #include <boost/unordered/unordered_map.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 
@@ -24,6 +25,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/udp.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/steady_timer.hpp>
 
 class CSession;
 
@@ -64,12 +66,17 @@ public:
 private:
 	void uploader(asio::yield_context yield);
 	void downloader(asio::yield_context yield);
+	void displayer(asio::yield_context yield);
 
 private:
 	asio::io_context& _io_context;
 
 	asio::io_context::strand _src_strand;
 	asio::io_context::strand _dst_strand;
+	asio::steady_timer _display_timer;
+
+	asio::ip::udp::endpoint _src_local_ep;
+	asio::ip::udp::endpoint _dst_local_ep;
 
 	asio::ip::udp::endpoint _src_remote_ep;
 	asio::ip::udp::endpoint _dst_remote_ep;
@@ -88,9 +95,14 @@ private:
 	uint32_t _src_id;
 	uint32_t _dst_id;
 
+	boost::atomic<uint64_t> _up_bytes;
+	boost::atomic<uint64_t> _up_packs;
+	boost::atomic<uint64_t> _down_bytes;
+	boost::atomic<uint64_t> _down_packs;
+
 	bool _src_opened;
 	bool _dst_opened;
-	bool _started;
+	boost::atomic<bool> _started;
 };
 
 

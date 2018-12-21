@@ -40,6 +40,7 @@ private:
 	std::vector<io_context_ptr > _io_contexts;
 	std::list<io_context_work > _io_context_works;
 	size_t _next_context_index;
+	bool _started;
 };
 
 

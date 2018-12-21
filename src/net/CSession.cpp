@@ -14,12 +14,14 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/chrono.hpp>
 
 CSession::CSession(CServer& server, asio::io_context& io_context)
 : _server(server)
 , _strand(io_context)
 , _socket(io_context)
 , _timer(io_context)
+, _timeout(10)
 , _id(~0)
 , _private_addr(0)
 , _guid("")
@@ -31,7 +33,7 @@ CSession::CSession(CServer& server, asio::io_context& io_context)
 CSession::~CSession()
 {
 	stop();
-	LOGF(TRACE) << "session[" << _id << "] destroy.";
+	LOGF(TRACE) << "session[" << _id << "].";
 }
 
 void CSession::stop()
@@ -53,7 +55,19 @@ void CSession::stop()
 void CSession::start()
 {
 	LOGF(DEBUG) << "session[" << _id << "] start.";
+	_timer.expires_from_now(boost::chrono::seconds(_timeout));
+	_timer.async_wait(
+			boost::bind(&CSession::onTimeout,
+						shared_from_this(),
+						asio::placeholders::error));
 	doRead();
+}
+
+void CSession::onTimeout(const boost::system::error_code& ec)
+{
+	LOG(TRACE) << "session[" << _id << "] timeout: " << ec.message();
+	if (!ec)
+		stop();
 }
 
 void CSession::doRead()
@@ -217,10 +231,10 @@ bool CSession::checkHead()
 		return true;
 	}
 
-	LOGF(ERR) << "session[" << _id << "] read header error: "
-			<< (int)_header.ucHead1 << "|"
-			<< (int)_header.ucHead2 << "|"
-			<< (int)_header.ucSvrVersion;
+	LOGF(ERR) << "session[" << _id << "] read header error: " << std::hex
+			<< " 0x"  << (int)_header.ucHead1
+			<< " | 0x" << (int)_header.ucHead2
+			<< " | 0x" << (int)_header.ucSvrVersion;
 
 	bzero(&_header, sizeof(SHeaderPkg));
 	_read_buf.consume(2);
@@ -235,17 +249,24 @@ void CSession::onLogin(boost::shared_ptr<CReqLoginPkg>& req)
 		_private_addr = req->uiPrivateAddr;
 
 		_logined = _server.onLogin(shared_from_this());
-	}
 
-	if (_logined) {
-		resp.ucErr = 0;
-		resp.uiId = id();
+		if (_logined) {
+			resp.ucErr = 0;
+			resp.uiId = id();
+			LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login success.";
 
-		LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login success.";
+			boost::system::error_code ec;
+			_timer.cancel(ec);
+		}
+		else {
+			resp.ucErr = 0xFF;
+			LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login failed.";
+		}
 	}
 	else {
-		resp.ucErr = 0xFF;
-		LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login failed.";
+		resp.ucErr = 0xFE;
+		resp.uiId = id();
+		LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login repeat.";
 	}
 
 	StringPtr msg = resp.serialize(req->header);

@@ -34,6 +34,7 @@ void CSessionDb::stop()
 {
 	if (_started) {
 		_started = false;
+		_op_cond.notify_all();
 		LOGF(TRACE) << "session db stop.";
 	}
 }
@@ -44,6 +45,7 @@ void CSessionDb::worker()
 		operate();
 		serial();
 	}
+	LOG(TRACE) << "session db thread exit.";
 }
 
 void CSessionDb::operate()
@@ -51,6 +53,8 @@ void CSessionDb::operate()
 	boost::mutex::scoped_lock lk(_op_mutex);
 	while (_op_stack.empty()) {
 		_op_cond.wait(lk);
+		if (!_started)
+			return;
 	}
 
 	const OperationItem& item = _op_stack.front();

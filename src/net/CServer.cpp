@@ -23,6 +23,10 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 , _started(true)
 {
 	_signal_sets.add(SIGTERM);
+	_signal_sets.add(SIGINT);
+#ifdef SIGQUIT
+	_signal_sets.add(SIGQUIT);
+#endif
 
 	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
 
@@ -44,9 +48,16 @@ CServer::~CServer()
 
 void CServer::stop()
 {
-	LOGF(WARNING) << "server stop.";
-	_started = false;
-	_session_db.stop();
+	if (_started) {
+		_started = false;
+		boost::system::error_code ec;
+		//_acceptor.cancel(ec);
+		//_acceptor.close(ec);
+		//_session_map.removeAll();
+		_session_db.stop();
+		_io_context_pool.stop();
+		LOGF(WARNING) << "server stopped.";
+	}
 }
 
 void CServer::start()
@@ -72,10 +83,12 @@ void CServer::onAccept(const boost::system::error_code& ec)
 {
 	LOGF(TRACE) << "accept conn: [" << _session_ptr->socket().remote_endpoint()
 			<< "] ec: " << ec.message();
-	if (!ec) {
-		LOGF(TRACE);
-		_session_ptr->start();
+	if (ec) {
+		LOGF(DEBUG) << "accept error: " << ec.message();
+		return;
 	}
+
+	_session_ptr->start();
 	startAccept();
 }
 

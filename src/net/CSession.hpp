@@ -67,6 +67,7 @@ public:
 	void closeDstChannel(CChannel::SelfType chann);
 
 private:
+	void onTimeout(const boost::system::error_code& ec);
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
 	bool checkHead();
@@ -92,11 +93,12 @@ private:
 	CChannelMap		_dst_channels;
 
 	SHeaderPkg		_header;
+	uint32_t		_timeout;
 	uint32_t 		_id;
 	uint32_t		_private_addr;
 	std::string		_guid;
 	bool 			_logined;
-	bool			_started;
+	boost::atomic<bool>	_started;
 };
 
 #endif /* SRC_NET_CSESSION_HPP_ */

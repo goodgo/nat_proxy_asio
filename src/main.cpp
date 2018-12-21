@@ -9,18 +9,21 @@
 #include "CServer.hpp"
 #include "util.hpp"
 
-int main()
+int main(int argc, char* argv[])
 {
-	InitLog("/usr/local/log/");
-	/*
 	if (!util::daemon()) {
-		LOG(ERR) << "daemon failed.";
-		FinitLog();
+		std::cerr << "daemon failed." << std::endl;
 		return 0;
 	}
-	*/
-	CServer server("172.16.31.192", 10001, 4);
-	server.start();
+
+	try {
+		InitLog("/usr/local/log/");
+		CServer server("0.0.0.0", 10001, 4);
+		server.start();
+	}
+	catch(std::exception& e) {
+		std::cerr << "e: " << e.what() << std::endl;
+	}
 
 	return 0;
 }
