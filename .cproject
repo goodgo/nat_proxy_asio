@@ -33,7 +33,7 @@
 									<listOptionValue builtIn="false" value="../src/openssl"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.768599373" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.768599373" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1286170914" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.614256575" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug">
@@ -111,8 +111,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.505164518" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.exe.release">
 								<option id="gnu.cpp.compiler.exe.release.option.optimization.level.1879409331" name="Optimization Level" superClass="gnu.cpp.compiler.exe.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.697781900" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.dialect.std.96978990" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.include.paths.1535640321" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+								<option id="gnu.cpp.compiler.option.dialect.std.96978990" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.include.paths.1535640321" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="../src"/>
 									<listOptionValue builtIn="false" value="../src/data"/>
 									<listOptionValue builtIn="false" value="../src/net"/>
@@ -139,15 +139,15 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.722259901" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.110278838" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
-								<option id="gnu.cpp.link.option.libs.1945357219" superClass="gnu.cpp.link.option.libs" valueType="libs">
+								<option id="gnu.cpp.link.option.libs.1945357219" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="ssl"/>
 									<listOptionValue builtIn="false" value="rt"/>
 									<listOptionValue builtIn="false" value="pthread"/>
 								</option>
-								<option id="gnu.cpp.link.option.paths.582518139" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+								<option id="gnu.cpp.link.option.paths.582518139" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/"/>
 								</option>
-								<option id="gnu.cpp.link.option.userobjs.779834345" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
+								<option id="gnu.cpp.link.option.userobjs.779834345" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_thread.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_system.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_coroutine.a"/>
@@ -157,6 +157,7 @@
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_log.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_regex.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_filesystem.a"/>
+									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_program_options.a"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.232875524" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

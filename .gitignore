@@ -1,3 +1,4 @@
 *.o
 
 nat_proxy_asio
+/Release/

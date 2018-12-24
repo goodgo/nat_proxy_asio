@@ -23,8 +23,14 @@ enum LogLevel {
 	REPORT
 };
 
-void InitLog(const std::string& log_dir);
-void FinitLog();
+static const char black[] = {0x1b, '[', '1', ';', '3', '0', 'm', 0};
+static const char red[] = {0x1b, '[', '1', ';', '3', '1', 'm', 0};
+static const char yellow[] = {0x1b, '[', '1', ';', '3', '3', 'm', 0};
+static const char blue[] = {0x1b, '[', '1', ';', '3', '4', 'm', 0};
+static const char normal[] = {0x1b, '[', '0', ';', '3', '9', 'm', 0};
+
+void initLog(const std::string& log_dir);
+void finitLog();
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, boost::log::sources::severity_logger_mt<LogLevel>)
 

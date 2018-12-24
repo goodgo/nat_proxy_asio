@@ -12,8 +12,9 @@
 #include <boost/asio/io_context.hpp>
 #include "CLogger.hpp"
 #include "version.h"
+#include "CConfig.hpp"
 
-CServer::CServer(std::string address, uint16_t port, size_t pool_size)
+CServer::CServer(uint32_t pool_size)
 : _io_context_pool(pool_size)
 , _signal_sets(_io_context_pool.getIoContext())
 , _acceptor(_io_context_pool.getIoContext())
@@ -30,7 +31,7 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 
 	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
 
-	asio::ip::tcp::endpoint ep(asio::ip::address::from_string(address), port);
+	asio::ip::tcp::endpoint ep(asio::ip::address::from_string(gConfig->srvAddr()), gConfig->listenPort());
 	_acceptor.open(ep.protocol());
 	if (!_acceptor.is_open())
 		throw std::runtime_error("open acceptor failed.");
@@ -43,7 +44,7 @@ CServer::CServer(std::string address, uint16_t port, size_t pool_size)
 CServer::~CServer()
 {
 	LOGF(TRACE);
-	FinitLog();
+	finitLog();
 }
 
 void CServer::stop()

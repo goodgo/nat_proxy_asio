@@ -14,6 +14,9 @@ CIoContextPool::CIoContextPool(size_t pool_size)
 : _next_context_index(0)
 , _started(true)
 {
+	uint32_t core_num = boost::thread::hardware_concurrency();
+	LOG(INFO) << "hardware concurrency: " << core_num;
+	pool_size = (core_num == 1) ? pool_size : core_num;
 	for (size_t i = 0; i < pool_size; i++) {
 		io_context_ptr io = boost::make_shared<asio::io_context>();
 		_io_contexts.push_back(io);

@@ -35,7 +35,7 @@ namespace asio {
 class CServer : private boost::noncopyable
 {
 public:
-	CServer(std::string address, uint16_t port, size_t pool_size);
+	CServer(uint32_t pool_size);
 	~CServer();
 	void start();
 	void stop();

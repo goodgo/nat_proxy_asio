@@ -9,7 +9,7 @@
 #define SRC_UTIL_VERSION_H_
 
 #define	COM		"nat_proxy@root.copyright"
-#define VERSION_MAJOR 1
+#define VERSION_MAJOR 2
 #define VERSION_MINOR 0
 
 #define BUILD_YEAR_CH0 (__DATE__[ 7])

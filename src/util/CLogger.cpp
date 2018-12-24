@@ -32,10 +32,9 @@ namespace sinks = boost::log::sinks;
 namespace expr = boost::log::expressions;
 namespace keywords = boost::log::keywords;
 
-void InitLog(const std::string& log_dir) {
+void initLog(const std::string& path) {
 	
-	boost::filesystem::path log_path(log_dir);
-	log_path.append("nat_proxy_asio");
+	boost::filesystem::path log_path(path);
 
 	if (!boost::filesystem::exists(log_path))
 		boost::filesystem::create_directories(log_path);
@@ -46,6 +45,8 @@ void InitLog(const std::string& log_dir) {
 	file_backend->set_open_mode(std::ios::app);
 	file_backend->set_file_name_pattern(log_path.string() + "/%Y%m%d_%N.log");
 	file_backend->set_rotation_size(20 * 1024 * 1024);
+	//file_backend->set_time_based_rotation();
+	//file_backend->time_based_rotation_predicate(0);
 	file_backend->auto_flush(true);
 
 	typedef sinks::synchronous_sink<sinks::text_file_backend> FileSink;
@@ -64,7 +65,7 @@ void InitLog(const std::string& log_dir) {
 	logging::add_common_attributes();
 }
 
-void FinitLog()
+void finitLog()
 {
 	boost::log::core::get()->remove_all_sinks();
 }

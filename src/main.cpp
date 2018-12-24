@@ -8,17 +8,24 @@
 #include "CLogger.hpp"
 #include "CServer.hpp"
 #include "util.hpp"
+#include "CConfig.hpp"
 
 int main(int argc, char* argv[])
 {
-	if (!util::daemon()) {
-		std::cerr << "daemon failed." << std::endl;
+	if (!gConfig->init(argc, argv))
 		return 0;
+
+	gConfig->print();
+	if (gConfig->daemon()) {
+		if (!util::daemon()) {
+			std::cerr << "daemon failed." << std::endl;
+			return 0;
+		}
 	}
 
 	try {
-		InitLog("/usr/local/log/");
-		CServer server("0.0.0.0", 10001, 4);
+		initLog(gConfig->logPath());
+		CServer server(gConfig->workerNum());
 		server.start();
 	}
 	catch(std::exception& e) {
