@@ -31,7 +31,9 @@ CServer::CServer(uint32_t pool_size)
 
 	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
 
-	asio::ip::tcp::endpoint ep(asio::ip::address::from_string(gConfig->srvAddr()), gConfig->listenPort());
+	asio::ip::tcp::endpoint ep(
+			asio::ip::address::from_string(gConfig->srvAddr()),
+			gConfig->listenPort());
 	_acceptor.open(ep.protocol());
 	if (!_acceptor.is_open())
 		throw std::runtime_error("open acceptor failed.");
@@ -63,8 +65,12 @@ void CServer::stop()
 
 void CServer::start()
 {
-	LOG(TRACE) << "start server: " << _acceptor.local_endpoint()
-			<< ", version: " << SERVER_VERSION_DATE << " <buildin: " << BUILD_VERSION << ">";
+	LOG(TRACE) << gConfig->procName()
+			<< " Version: " << SERVER_VERSION_DATE
+			<< " <Build: " << BUILD_VERSION
+			<< "> Core: " << _io_context_pool.workerNum()
+			<< ", service: [" << _acceptor.local_endpoint() << "]";
+
 	_session_db.start();
 	startAccept();
 	_io_context_pool.run();

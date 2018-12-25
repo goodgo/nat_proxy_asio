@@ -71,6 +71,7 @@
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_log.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_regex.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_filesystem.a"/>
+									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_program_options.a"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.10001882" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -148,6 +149,7 @@
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/"/>
 								</option>
 								<option id="gnu.cpp.link.option.userobjs.779834345" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
+									<listOptionValue builtIn="false" value="/usr/local/lib/gperftools/libtcmalloc_minimal.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_thread.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_system.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_coroutine.a"/>

@@ -12,12 +12,14 @@
 
 CIoContextPool::CIoContextPool(size_t pool_size)
 : _next_context_index(0)
+, _worker_num(0)
 , _started(true)
 {
-	uint32_t core_num = boost::thread::hardware_concurrency();
-	LOG(INFO) << "hardware concurrency: " << core_num;
-	pool_size = (core_num == 1) ? pool_size : core_num;
-	for (size_t i = 0; i < pool_size; i++) {
+	_worker_num = boost::thread::hardware_concurrency();
+	if (_worker_num == 1)
+		_worker_num = pool_size;
+
+	for (size_t i = 0; i < _worker_num; i++) {
 		io_context_ptr io = boost::make_shared<asio::io_context>();
 		_io_contexts.push_back(io);
 		_io_context_works.push_back(asio::make_work_guard(*io));

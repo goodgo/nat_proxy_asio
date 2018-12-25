@@ -161,8 +161,12 @@ void CChannel::uploader(asio::yield_context yield)
 			<< " --> " << _dst_remote_ep
 			<< "]("    << _dst_id << ") start upload.";
 
+	_src_socket.connect(ep, ec);
+	if (ec)
+		LOGF(ERR) << "channel[" << _id << "] uploader connect error: " << ec.message();
+
 	while (_started) {
-		bytes = _src_socket.async_receive_from(asio::buffer(_src_buf), ep, yield[ec]);
+		bytes = _src_socket.async_receive(asio::buffer(_src_buf), yield[ec]);
 		if (ec || bytes <= 0) {
 			LOGF(ERR) << "channel[" << _id << "] (" << _src_id
 					<< ")["    << ep
@@ -243,8 +247,13 @@ void CChannel::downloader(asio::yield_context yield)
 			<< " <-- " << _dst_remote_ep
 			<< "]("    << _dst_id << ") start download.";
 
+	_dst_socket.connect(ep, ec);
+	if (ec)
+		LOGF(ERR) << "channel[" << _id << "] downloader error: " << ec.message();
+
+
 	while (_started) {
-		bytes = _dst_socket.async_receive_from(asio::buffer(_dst_buf), ep, yield[ec]);
+		bytes = _dst_socket.async_receive(asio::buffer(_dst_buf), yield[ec]);
 		if (ec || bytes <= 0) {
 			LOGF(ERR) << "channel[" << _id << "] (" << _src_id
 					<< ")[" << _dst_socket.local_endpoint().port() << " <-- " << ep

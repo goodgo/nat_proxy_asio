@@ -18,9 +18,8 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
-#include <CSafeMap.hpp>
-#include <CSessionDb.hpp>
 
+#include "CSessionDb.hpp"
 #include "CIoContextPool.hpp"
 #include "CSession.hpp"
 #include "CChannel.hpp"

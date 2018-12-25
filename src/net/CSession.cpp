@@ -60,6 +60,8 @@ void CSession::start()
 			boost::bind(&CSession::onTimeout,
 						shared_from_this(),
 						asio::placeholders::error));
+
+	_socket.set_option(asio::ip::tcp::no_delay(true));
 	doRead();
 }
 

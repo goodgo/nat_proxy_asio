@@ -32,6 +32,7 @@ public:
 	void run();
 	void stop();
 	asio::io_context& getIoContext();
+	size_t workerNum() { return _worker_num; }
 
 private:
 	typedef boost::shared_ptr<asio::io_context> io_context_ptr;
@@ -40,6 +41,7 @@ private:
 	std::vector<io_context_ptr > _io_contexts;
 	std::list<io_context_work > _io_context_works;
 	size_t _next_context_index;
+	size_t _worker_num;
 	bool _started;
 };
 

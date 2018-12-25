@@ -12,10 +12,11 @@
 
 int main(int argc, char* argv[])
 {
-	if (!gConfig->init(argc, argv))
+	if (!gConfig->init(argc, argv)) {
+		gConfig->print();
 		return 0;
+	}
 
-	gConfig->print();
 	if (gConfig->daemon()) {
 		if (!util::daemon()) {
 			std::cerr << "daemon failed." << std::endl;
@@ -23,12 +24,16 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	try {
-		initLog(gConfig->logPath());
+	try
+	{
+		initLog(gConfig->procName(),
+				gConfig->logPath(),
+				gConfig->logFileSize());
 		CServer server(gConfig->workerNum());
 		server.start();
 	}
-	catch(std::exception& e) {
+	catch(std::exception& e)
+	{
 		std::cerr << "e: " << e.what() << std::endl;
 	}
 
