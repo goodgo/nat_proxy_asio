@@ -78,7 +78,10 @@ void CServer::start()
 
 void CServer::startAccept()
 {
-	_session_ptr.reset(new CSession(*this, _io_context_pool.getIoContext()));
+	_session_ptr.reset(new CSession(*this,
+			_io_context_pool.getIoContext(),
+			gConfig->loginTimeout()));
+
 	_acceptor.async_accept(
 			_session_ptr->socket(),
 			boost::bind(&CServer::onAccept,

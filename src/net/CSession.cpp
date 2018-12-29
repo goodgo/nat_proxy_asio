@@ -16,12 +16,12 @@
 #include <boost/thread/thread.hpp>
 #include <boost/chrono.hpp>
 
-CSession::CSession(CServer& server, asio::io_context& io_context)
+CSession::CSession(CServer& server, asio::io_context& io_context, uint32_t timeout)
 : _server(server)
 , _strand(io_context)
 , _socket(io_context)
 , _timer(io_context)
-, _timeout(10)
+, _timeout(timeout)
 , _id(~0)
 , _private_addr(0)
 , _guid("")
@@ -253,21 +253,21 @@ void CSession::onLogin(boost::shared_ptr<CReqLoginPkg>& req)
 		_logined = _server.onLogin(shared_from_this());
 
 		if (_logined) {
-			resp.ucErr = 0;
-			resp.uiId = id();
+			resp.error(0);
+			resp.id(_id);
 			LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login success.";
 
 			boost::system::error_code ec;
 			_timer.cancel(ec);
 		}
 		else {
-			resp.ucErr = 0xFF;
+			resp.error(0xFF);
 			LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login failed.";
 		}
 	}
 	else {
-		resp.ucErr = 0xFE;
-		resp.uiId = id();
+		resp.error(0xFE);
+		resp.id(_id);
 		LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login repeat.";
 	}
 
@@ -289,10 +289,11 @@ void CSession::onAccelate(boost::shared_ptr<CReqAccelationPkg>& req)
 		asio::ip::udp::socket::endpoint_type dst_ep = chann->dstEndpoint();
 
 		CRespAccess resp_dst;
-		resp_dst.uiSrcId = _id;
-		resp_dst.uiUdpAddr = dst_ep.address().to_v4().to_uint();
-		resp_dst.usUdpPort = asio::detail::socket_ops::host_to_network_short(dst_ep.port());
-		resp_dst.uiPrivateAddr = _private_addr;
+		resp_dst.srcId(_id);
+		resp_dst.udpId(chann->id());
+		resp_dst.udpAddr(dst_ep.address().to_v4().to_uint());
+		resp_dst.udpPort(asio::detail::socket_ops::host_to_network_short(dst_ep.port()));
+		resp_dst.privateAddr(_private_addr);
 
 		SHeaderPkg head;
 		bzero(&head, sizeof(SHeaderPkg));
@@ -302,15 +303,13 @@ void CSession::onAccelate(boost::shared_ptr<CReqAccelationPkg>& req)
 		StringPtr msg = resp_dst.serialize(head);
 		dst->doWrite(msg);
 
-		resp.ucErr = 0;
-		resp.uiUdpAddr = src_ep.address().to_v4().to_uint();
-		resp.usUdpPort = asio::detail::socket_ops::host_to_network_short(src_ep.port());
+		resp.error(0);
+		resp.udpId(chann->id());
+		resp.udpAddr(src_ep.address().to_v4().to_uint());
+		resp.udpPort(asio::detail::socket_ops::host_to_network_short(src_ep.port()));
 	}
 	else {
-		resp.ucErr = 0xFF;
-		resp.uiUdpAddr = 0;
-		resp.usUdpPort = 0;
-
+		resp.error(0xFF);
 		LOGF(ERR) << "session[" << _id << "] request accelate destination[" << req->uiDstId << "] no found.";
 	}
 
@@ -350,22 +349,23 @@ void CSession::closeSrcChannel(CChannel::SelfType chann)
 {
 	LOGF(TRACE) << "session[" << _id << "] close channel: " << chann->id();
 	_src_channels.remove(chann->id());
-	onStopAccelate(chann->srcEndpoint());
+	onStopAccelate(chann);
 }
 
 void CSession::closeDstChannel(CChannel::SelfType chann)
 {
 	LOGF(TRACE) << "session[" << _id << "] close channel: " << chann->id();
 	_dst_channels.remove(chann->id());
-	onStopAccelate(chann->dstEndpoint());
+	onStopAccelate(chann);
 }
 
-void CSession::onStopAccelate(asio::ip::udp::socket::endpoint_type ep)
+void CSession::onStopAccelate(CChannel::SelfType chann)
 {
 	CRespStopAccelate resp;
+	resp.udpId(chann->id());
+	resp.udpAddr(chann->srcEndpoint().address().to_v4().to_uint());
+	resp.udpPort(asio::detail::socket_ops::host_to_network_short(chann->srcEndpoint().port()));
 
-	resp.uiUdpAddr = ep.address().to_v4().to_uint();
-	resp.usUdpPort = ep.port();
 	SHeaderPkg header;
 	header.ucHead1 = 0xDD;
 	header.ucHead2 = 0x05;

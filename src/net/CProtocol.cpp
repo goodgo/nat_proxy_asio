@@ -80,8 +80,9 @@ StringPtr CRespAccelate::serialize(const SHeaderPkg& head)
 	memcpy(buf, &head, sizeof(head));
 	memcpy(buf + 6, &bodylen, 2);
 	buf[8] = ucErr;
-	memcpy(buf + 9, &uiUdpAddr, 4);
-	memcpy(buf + 9 + 4, &usUdpPort, 2);
+	memcpy(buf + 9, &uiUdpId, 4);
+	memcpy(buf + 9 + 4, &uiUdpAddr, 4);
+	memcpy(buf + 9 + 4 + 4, &usUdpPort, 2);
 
 	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;
@@ -97,9 +98,10 @@ StringPtr CRespAccess::serialize(const SHeaderPkg& head)
 	memcpy(buf, &head, sizeof(head));
 	memcpy(buf + 6, &bodylen, 2);
 	memcpy(buf + 8, &uiSrcId, 4);
-	memcpy(buf + 8 + 4, &uiUdpAddr, 4);
-	memcpy(buf + 8 + 4 + 4, &usUdpPort, 2);
-	memcpy(buf + 8 + 4 + 4 + 2, &uiPrivateAddr, 4);
+	memcpy(buf + 8 + 4, &uiUdpId, 4);
+	memcpy(buf + 8 + 4 + 4, &uiUdpAddr, 4);
+	memcpy(buf + 8 + 4 + 4 + 4, &usUdpPort, 2);
+	memcpy(buf + 8 + 4 + 4 + 4 + 2, &uiPrivateAddr, 4);
 
 	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;
@@ -127,8 +129,9 @@ StringPtr CRespStopAccelate::serialize(const SHeaderPkg& head)
 	char* buf = new char[len + 1]();
 	memcpy(buf, &head, sizeof(head));
 	memcpy(buf + 6, &bodylen, 2);
-	memcpy(buf + 8, &uiUdpAddr, 4);
-	memcpy(buf + 8 + 4, &usUdpPort, 2);
+	memcpy(buf + 8, &uiUdpId, 4);
+	memcpy(buf + 8 + 4, &uiUdpAddr, 4);
+	memcpy(buf + 8 + 4 + 4, &usUdpPort, 2);
 
 	StringPtr msg = boost::make_shared<std::string>(buf, len);
 	delete[] buf;

@@ -7,7 +7,8 @@
 
 #include "CChannel.hpp"
 #include <boost/bind.hpp>
-#include <boost/chrono.hpp>
+#include <boost/chrono/chrono.hpp>
+#include <boost/ratio.hpp>
 #include "CSession.hpp"
 #include "CLogger.hpp"
 #include "util.hpp"
@@ -29,10 +30,13 @@ CChannel::CChannel(asio::io_context& io,
 , _id(id)
 , _src_id(src_session->id())
 , _dst_id(dst_session->id())
+
 , _up_bytes(0)
 , _up_packs(0)
 , _down_bytes(0)
 , _down_packs(0)
+, _start_tp(boost::chrono::steady_clock::now())
+
 , _src_opened(false)
 , _dst_opened(false)
 , _started(true)
@@ -87,7 +91,12 @@ void CChannel::stop()
 				s->closeDstChannel(shared_from_this());
 			}
 		}
-		LOG(INFO) << "channel[" << _id << "] stopped.";
+
+		boost::chrono::duration<double> sec =
+				boost::chrono::steady_clock::now() - _start_tp;
+		LOG(INFO) << "channel[" << _id << "] closed. take time(sec): " << sec.count()
+				<< " | TX packets:" << _up_packs << " bytes:" << _up_bytes
+				<< " | RX packets:" << _down_packs << " bytes:" << _down_bytes;
 	}
 }
 
@@ -141,7 +150,7 @@ void CChannel::uploader(asio::yield_context yield)
 
 		LOGF(INFO) << "channel[" << _id << "] (" << _src_id
 				<< ")[" << ep << " <-- " << _src_socket.local_endpoint().port()
-				<< "](" << _dst_id << ") src echo auth: " << util::to_hex(_src_buf, bytes);
+				<< "](" << _dst_id << ") src echo auth[" << bytes << "]: " << util::to_hex(_src_buf, bytes);
 
 		bytes = _src_socket.async_send_to(asio::buffer(_src_buf, bytes), ep, yield[ec]);
 		if (ec || bytes <= 0) {
@@ -264,10 +273,10 @@ void CChannel::downloader(asio::yield_context yield)
 		if (bytes <= 2)
 			continue;
 
-		bytes = _src_socket.async_send_to(asio::buffer(_dst_buf, bytes), _dst_remote_ep, yield[ec]);
+		bytes = _src_socket.async_send_to(asio::buffer(_dst_buf, bytes), _src_remote_ep, yield[ec]);
 		if (ec || bytes <= 0) {
 			LOGF(ERR) << "channel[" << _id << "] (" << _src_id
-					<< ")[" << _dst_socket.local_endpoint().port() << " <-- " << _dst_remote_ep
+					<< ")[" << _dst_socket.local_endpoint().port() << " <-- " << _src_remote_ep
 					<< "](" << _dst_id << ") download failed: " << ec.message();
 			continue;
 		}
@@ -289,10 +298,14 @@ void CChannel::downloader(asio::yield_context yield)
 void CChannel::displayer(asio::yield_context yield)
 {
 	boost::system::error_code ec;
+	uint64_t up_bytes = 0;
+	uint64_t down_bytes = 0;
+
 	while(_started) {
 		_display_timer.expires_from_now(boost::chrono::minutes(1));
 		_display_timer.async_wait(yield[ec]);
 		if (ec) {
+			LOG(ERR) << "channel[" << _id << "] displayer timer error: " << ec.message();
 			continue;
 		}
 		LOG(TRACE) << "channel[" << _id << "] (" << _src_id
@@ -301,8 +314,13 @@ void CChannel::displayer(asio::yield_context yield)
 				<< " <--> " << _dst_local_ep.port()
 				<< " <--> " << _dst_remote_ep
 				<< "]("    << _dst_id << ")"
-				<< " upload(" << _up_packs << "): " << _up_bytes/60 << " B/s"
-				<< " download(" << _down_packs << "): " << _down_bytes/60 << " B/s";
+				<< " upload(" << _up_packs << "): " << _up_bytes << "Bytes. "
+				<< (_up_bytes - up_bytes) / 60 << "B/s | "
+				<< "download(" << _down_packs << "): " << _down_bytes << "Bytes. "
+				<< (_down_bytes - down_bytes) / 60 << "B/s";
+
+		up_bytes = _up_bytes;
+		down_bytes = _down_bytes;
 	}
 	LOG(TRACE) << "channel[" << _id << "] displayer exit!";
 }

@@ -43,7 +43,7 @@ public:
 	typedef boost::shared_ptr<CSession> SelfType;
 	typedef std::deque<StringPtr > MsgQue;
 
-	CSession(CServer& server, asio::io_context& io_context);
+	CSession(CServer& server, asio::io_context& io_context, uint32_t timeout);
 	~CSession();
 	void start();
 	void stop();
@@ -75,7 +75,7 @@ private:
 	void onLogin(boost::shared_ptr<CReqLoginPkg>& pkg);
 	void onAccelate(boost::shared_ptr<CReqAccelationPkg>& pkg);
 	void onGetSessions(boost::shared_ptr<CReqGetConsolesPkg>& pkg);
-	void onStopAccelate(asio::ip::udp::socket::endpoint_type ep);
+	void onStopAccelate(CChannel::SelfType chann);
 
 	void writeImpl(StringPtr msg);
 	void write();

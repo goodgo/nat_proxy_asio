@@ -15,6 +15,7 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/chrono/chrono.hpp>
 
 #include <boost/thread/mutex.hpp>
 #include <boost/atomic.hpp>
@@ -26,6 +27,7 @@
 #include <boost/asio/ip/udp.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/chrono.hpp>
 
 class CSession;
 
@@ -99,6 +101,7 @@ private:
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;
 	boost::atomic<uint64_t> _down_packs;
+	boost::chrono::steady_clock::time_point _start_tp;
 
 	bool _src_opened;
 	bool _dst_opened;

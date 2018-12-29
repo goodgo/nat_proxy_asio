@@ -41,6 +41,7 @@ public:
 			_srv_addr = _cfg.get<std::string>("srv.addr", "0.0.0.0");
 			_listen_port = _cfg.get<uint16_t>("srv.listen_port", 10001);
 			_worker_num = _cfg.get<uint8_t>("srv.worker_num", 2);
+			_login_timeout = _cfg.get<uint32_t>("srv.login_timeout", 30);
 			return true;
 		}
 		catch (boost::property_tree::ini_parser_error &e)
@@ -58,6 +59,7 @@ public:
 	std::string srvAddr() const { return _srv_addr; }
 	uint16_t listenPort() const { return _listen_port; }
 	uint8_t workerNum() const { return _worker_num; }
+	uint32_t loginTimeout() const { return _login_timeout; }
 	bool daemon() const { return _daemon; }
 
 	/////////////////////////////////////////////////////////////////////
@@ -72,6 +74,7 @@ public:
 		std::cout << "server addr: " << srvAddr() << std::endl;
 		std::cout << "listen port: " << listenPort() << std::endl;
 		std::cout << "worker num: " << (int)workerNum() << std::endl;
+		std::cout << "login timeout: " << loginTimeout() << std::endl;
 		std::cout << "is daemon: " << std::boolalpha << daemon() << std::endl;
 		std::cout << "========================================" << std::endl;
 	}
@@ -115,6 +118,7 @@ protected:
 	, _srv_addr("")
 	, _listen_port(0)
 	, _worker_num(0)
+	, _login_timeout(0)
 	, _daemon(false)
 	{}
 
@@ -129,6 +133,7 @@ private:
 	std::string _srv_addr;
 	uint16_t 	_listen_port;
 	uint8_t		_worker_num;
+	uint32_t 	_login_timeout;
 	bool		_daemon;
 };
 

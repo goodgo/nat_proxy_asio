@@ -115,11 +115,12 @@ public:
 	CRespPkgBase() : ucErr(0) {}
 	virtual ~CRespPkgBase() {}
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head) = 0;
+	virtual void error(uint8_t err) { ucErr = err; }
 
 protected:
 	virtual uint16_t size() const = 0;
 
-public:
+protected:
 	uint8_t ucErr;
 };
 
@@ -131,8 +132,9 @@ public:
 	, uiId(0)
 	{}
 	virtual ~CRespLogin(){}
-
 	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+
+	void id(uint32_t val) { uiId = val; }
 
 private:
 	uint16_t size() const{
@@ -141,7 +143,7 @@ private:
 				sizeof(uiId));
 	}
 
-public:
+private:
 	uint32_t uiId;
 };
 
@@ -150,22 +152,29 @@ class CRespAccelate : public CRespPkgBase
 public:
 	CRespAccelate()
 	: CRespPkgBase()
+	, uiUdpId(0)
 	, uiUdpAddr(0)
 	, usUdpPort(0)
 	{}
 	virtual ~CRespAccelate(){}
-
 	virtual StringPtr serialize(const SHeaderPkg& head);
+
+	void udpId(uint32_t val) { uiUdpId = val; }
+	void udpAddr(uint32_t val) { uiUdpAddr = val; }
+	void udpPort(uint16_t val) { usUdpPort = val; }
 
 private:
 	uint16_t size() const{
 		return static_cast<uint16_t>(
 				sizeof(ucErr) +
+				sizeof(uiUdpId) +
 				sizeof(uiUdpAddr) +
 				sizeof(usUdpPort));
 	}
 
 public:
+private:
+	uint32_t uiUdpId;
 	uint32_t uiUdpAddr;
 	uint16_t usUdpPort;
 };
@@ -176,6 +185,7 @@ public:
 	CRespAccess()
 	: CRespPkgBase()
 	, uiSrcId(0)
+	, uiUdpId(0)
 	, uiUdpAddr(0)
 	, usUdpPort(0)
 	, uiPrivateAddr(0)
@@ -183,17 +193,26 @@ public:
 	virtual ~CRespAccess(){}
 	virtual StringPtr serialize(const SHeaderPkg& head);
 
+	void srcId(uint32_t val) { uiSrcId = val; }
+	void udpId(uint32_t val) { uiUdpId = val; }
+	void udpAddr(uint32_t val) { uiUdpAddr = val; }
+	void udpPort(uint16_t val) { usUdpPort = val; }
+	void privateAddr(uint32_t val) { uiPrivateAddr = val; }
+
 private:
 	uint16_t size() const{
 		return static_cast<uint16_t>(
 				sizeof(uiSrcId) +
+				sizeof(uiUdpId) +
 				sizeof(uiUdpAddr) +
 				sizeof(usUdpPort) +
 				sizeof(uiPrivateAddr));
 	}
 
 public:
+private:
 	uint32_t uiSrcId;
+	uint32_t uiUdpId;
 	uint32_t uiUdpAddr;
 	uint16_t usUdpPort;
 	uint32_t uiPrivateAddr;
@@ -220,20 +239,27 @@ class CRespStopAccelate : public CRespPkgBase
 public:
 	CRespStopAccelate()
 	: CRespPkgBase()
+	, uiUdpId(0)
 	, uiUdpAddr(0)
 	, usUdpPort(0)
 	{}
 	virtual ~CRespStopAccelate(){}
 	virtual StringPtr serialize(const SHeaderPkg& head);
 
+	void udpId(uint32_t val) { uiUdpId = val; }
+	void udpAddr(uint32_t val) { uiUdpAddr = val; }
+	void udpPort(uint16_t val) { usUdpPort = val; }
+
 private:
 	uint16_t size() const{
 		return static_cast<uint16_t>(
+				sizeof(uiUdpId) +
 				sizeof(uiUdpAddr) +
 				sizeof(usUdpPort)
 				);
 	}
 public:
+	uint32_t uiUdpId;
 	uint32_t uiUdpAddr;
 	uint16_t usUdpPort;
 };
