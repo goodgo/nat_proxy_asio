@@ -45,7 +45,8 @@ public:
 			boost::shared_ptr<CSession> src_session,
 			boost::shared_ptr<CSession> dst_session,
 			asio::ip::udp::endpoint& src_ep,
-			asio::ip::udp::endpoint& dst_ep);
+			asio::ip::udp::endpoint& dst_ep,
+			uint32_t display_timeout = 60);
 	~CChannel();
 
 	void start();
@@ -69,6 +70,7 @@ private:
 	void uploader(asio::yield_context yield);
 	void downloader(asio::yield_context yield);
 	void displayer(asio::yield_context yield);
+	bool doAuth(const char* buf, const size_t bytes);
 
 private:
 	asio::io_context& _io_context;
@@ -97,6 +99,7 @@ private:
 	uint32_t _src_id;
 	uint32_t _dst_id;
 
+	uint32_t _display_timeout;
 	boost::atomic<uint64_t> _up_bytes;
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;

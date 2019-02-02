@@ -57,4 +57,20 @@ namespace util {
 		return true;
 	}
 
+	std::string formatBytes(const uint64_t& bytes)
+	{
+		char buff[32] = "";
+		if (bytes >= TB)
+			sprintf(buff, "%.2f TB", (double)bytes / TB);
+		else if (bytes >= GB)
+			sprintf(buff, "%.2f GB", (double)bytes / GB);
+		else if (bytes >= MB)
+			sprintf(buff, "%.2f MB", (double)bytes / MB);
+		else if (bytes >= KB)
+			sprintf(buff, "%.2f KB", (double)bytes / KB);
+		else
+			sprintf(buff, "%llu B", bytes);
+
+		return buff;
+	}
 }

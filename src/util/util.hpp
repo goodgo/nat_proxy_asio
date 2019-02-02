@@ -10,8 +10,14 @@
 
 #include <string>
 #include <iomanip>
+#include <string>
 #include <boost/spirit/include/karma.hpp>
 #include "CLogger.hpp"
+
+const uint64_t KB = 1024;
+const uint64_t MB = 1024 * KB;
+const uint64_t GB = 1024 * MB;
+const uint64_t TB = 1024 * GB;
 
 namespace util {
 	inline std::string to_hex(const char*pbuf, const size_t len)
@@ -35,6 +41,7 @@ namespace util {
 	}
 
 	bool daemon();
+	std::string formatBytes(const uint64_t& bytes);
 }
 
 

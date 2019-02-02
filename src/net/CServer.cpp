@@ -105,8 +105,10 @@ void CServer::onAccept(const boost::system::error_code& ec)
 void CServer::closeSession(CSession::SelfType sess)
 {
 	_guid_set.remove(sess->guid());
-	_session_map.remove(sess->id());
-	_session_db.del(sess->id());
+	if (sess->logined() && sess->id() != DEFAULT_ID) {
+		_session_map.remove(sess->id());
+		_session_db.del(sess->id());
+	}
 
 	LOGF(TRACE) << "server close session[" << sess->id() << "] [" << sess->guid() << "]";
 }
@@ -151,7 +153,8 @@ CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::Self
 			_io_context_pool.getIoContext(),
 			allocChannelId(),
 			src, dst,
-			src_ep, dst_ep));
+			src_ep, dst_ep,
+			gConfig->channDisplayTimeout()));
 
 	src->addSrcChannel(chann);
 	dst->addDstChannel(chann);

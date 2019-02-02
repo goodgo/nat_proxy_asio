@@ -7,6 +7,7 @@
 #include <boost/log/sinks/sync_frontend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/sinks/syslog_backend.hpp>
+#include <boost/log/sinks.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/common.hpp>
@@ -32,8 +33,29 @@ namespace sinks = boost::log::sinks;
 namespace expr = boost::log::expressions;
 namespace keywords = boost::log::keywords;
 
-void initLog(const std::string& proc_name, const std::string& path, size_t rotation_size) {
-	
+
+template< typename CharT, typename TraitsT >
+inline std::basic_ostream< CharT, TraitsT >& operator<< (
+  std::basic_ostream< CharT, TraitsT >& strm, LogLevel lvl)
+{
+	static const char* const str[] = {
+			"TRACE",
+			"DEBUG",
+			"INFO",
+			"WARN",
+			"ERROR",
+			"FATAL",
+			"REPORT"
+	};
+	if (static_cast<std::size_t>(lvl) < (sizeof(str) / sizeof(*str)))
+		strm << str[lvl];
+	else
+		strm << static_cast<int>(lvl);
+	return strm;
+}
+
+void initLog(const std::string& proc_name, const std::string& path, size_t rotation_size, uint8_t level)
+{
 	boost::filesystem::path log_path(path);
 
 	if (!boost::filesystem::exists(log_path))
@@ -44,23 +66,25 @@ void initLog(const std::string& proc_name, const std::string& path, size_t rotat
 	boost::shared_ptr<sinks::text_file_backend> file_backend =
 			boost::make_shared<sinks::text_file_backend>(
 				keywords::open_mode = std::ios::app,
-				keywords::file_name = log_path.string() + "/" + proc_name + "_%Y%m%d_%N.log",
+				keywords::file_name = log_path.string() + "/" + proc_name + "_%Y%m%d_%03N.log",
 				keywords::rotation_size = rotation_size * 1024 * 1024,
-				keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0),
+				keywords::time_based_rotation = sinks::file::rotation_at_time_point(7, 0, 0),
 				keywords::min_free_space = 30 * 1024 * 1024,
+				keywords::enable_final_rotation = false,
 				keywords::auto_flush = true
 			);
+
 
 	typedef sinks::synchronous_sink<sinks::text_file_backend> FileSink;
 	boost::shared_ptr<FileSink> file_sink = boost::make_shared<FileSink>(file_backend);
 	file_sink->set_formatter (
-		expr::format("[%1%] [TID:%2%] [Level:%3%] >> %4%")
+		expr::format("[%1%] [TID:%2%] [%3%] >> %4%")
 		% expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S")
 		% expr::attr<attrs::current_thread_id::value_type>("ThreadID")
 		% expr::attr<LogLevel>("Severity")
 		% expr::smessage
 	);
-	file_sink->set_filter(expr::attr<LogLevel>("Severity") >= TRACE);
+	file_sink->set_filter(expr::attr<LogLevel>("Severity") >= level);
 
 	core->add_sink(file_sink);
 	core->add_global_attribute("Scopes", attrs::named_scope());

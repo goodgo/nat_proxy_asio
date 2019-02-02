@@ -18,7 +18,7 @@
 #define BUILD_YEAR_CH3 (__DATE__[10])
 #define BUILD_YEAR {BUILD_YEAR_CH0, BUILD_YEAR_CH1, BUILD_YEAR_CH2, BUILD_YEAR_CH3}
 
-#define BUILD_MONTH_IS_JAN (__DATE__[1] == 'J' && __DATE__[1] == 'a' && __DATE__[2] == 'n')
+#define BUILD_MONTH_IS_JAN (__DATE__[0] == 'J' && __DATE__[1] == 'a' && __DATE__[2] == 'n')
 #define BUILD_MONTH_IS_FEB (__DATE__[0] == 'F')
 #define BUILD_MONTH_IS_MAR (__DATE__[0] == 'M' && __DATE__[1] == 'a' && __DATE__[2] == 'r')
 #define BUILD_MONTH_IS_APR (__DATE__[0] == 'A' && __DATE__[1] == 'p')

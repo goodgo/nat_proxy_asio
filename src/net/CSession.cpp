@@ -22,7 +22,7 @@ CSession::CSession(CServer& server, asio::io_context& io_context, uint32_t timeo
 , _socket(io_context)
 , _timer(io_context)
 , _timeout(timeout)
-, _id(~0)
+, _id(DEFAULT_ID)
 , _private_addr(0)
 , _guid("")
 , _logined(false)
@@ -107,14 +107,12 @@ void CSession::doWrite(StringPtr msg)
 void CSession::onReadHead(const boost::system::error_code& ec, const size_t bytes)
 {
 	if (ec) {
-		LOG(ERR) << "session[" << _id << "] read head error: " << ec.message();;
+		LOG(ERR) << "session[" << _id << "] read head error: " << ec.message();
 		stop();
 		return;
 	}
 
 	if (!checkHead()) {
-		LOG(WARNING) << "session[" << _id << "] check head failed: "
-				<< util::to_hex((char*)&_header, sizeof(_header));
 		doRead();
 		return;
 	}

@@ -17,6 +17,12 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
+ 	signal(SIGINT, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
+	signal(SIGTTIN, SIG_IGN);
+
 	if (gConfig->daemon()) {
 		if (!util::daemon()) {
 			std::cerr << "daemon failed." << std::endl;
@@ -28,13 +34,14 @@ int main(int argc, char* argv[])
 	{
 		initLog(gConfig->procName(),
 				gConfig->logPath(),
-				gConfig->logFileSize());
+				gConfig->logFileSize(),
+				gConfig->logLevel());
 		CServer server(gConfig->workerNum());
 		server.start();
 	}
 	catch(std::exception& e)
 	{
-		std::cerr << "e: " << e.what() << std::endl;
+		std::cerr << "server crash: " << e.what() << std::endl;
 	}
 
 	return 0;

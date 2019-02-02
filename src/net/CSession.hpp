@@ -37,6 +37,8 @@ namespace asio {
 
 class CServer;
 
+const uint32_t DEFAULT_ID = ~0;
+
 class CSession : public boost::enable_shared_from_this<CSession>
 {
 public:
@@ -53,6 +55,7 @@ public:
 	void doWrite(StringPtr msg);
 
 	std::string& guid() { return _guid; }
+	bool logined() { return _logined; }
 	void id(uint32_t id) { _id = id; }
 	uint32_t id() { return _id; }
 	uint32_t remoteAddr() {
