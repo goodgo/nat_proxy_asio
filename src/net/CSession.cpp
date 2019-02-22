@@ -141,7 +141,7 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 	const char* p = asio::buffer_cast<const char*>(_read_buf.data());
 	const size_t n = _read_buf.size();
 
-	LOG(ERR) << "session[" << _id << "] read package: "
+	LOG(TRACE) << "session[" << _id << "] read package: "
 			<< util::to_hex(p, sizeof(_header) + _header.usBodyLen);
 
 	switch (_header.ucFunc) {

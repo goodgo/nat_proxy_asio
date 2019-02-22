@@ -47,7 +47,12 @@ CChannel::CChannel(asio::io_context& io,
 	_src_remote_ep = asio::ip::udp::endpoint(src_session->socket().remote_endpoint().address(), 0);
 	_dst_remote_ep = asio::ip::udp::endpoint(dst_session->socket().remote_endpoint().address(), 0);
 	_src_socket.set_option(asio::ip::udp::socket::reuse_address(true));
+	_src_socket.set_option(asio::ip::udp::socket::send_buffer_size(4096));
+	_src_socket.set_option(asio::ip::udp::socket::receive_buffer_size(4096));
+
 	_dst_socket.set_option(asio::ip::udp::socket::reuse_address(true));
+	_dst_socket.set_option(asio::ip::udp::socket::send_buffer_size(4096));
+	_dst_socket.set_option(asio::ip::udp::socket::receive_buffer_size(4096));
 }
 
 CChannel::~CChannel()
@@ -304,6 +309,8 @@ void CChannel::displayer(asio::yield_context yield)
 	boost::system::error_code ec;
 	uint64_t up_bytes_prev = 0;
 	uint64_t down_bytes_prev = 0;
+	uint64_t up_packs_prev = 0;
+	uint64_t down_packs_prev = 0;
 
 	while(_started) {
 		_display_timer.expires_from_now(boost::chrono::seconds(_display_timeout));
@@ -313,22 +320,26 @@ void CChannel::displayer(asio::yield_context yield)
 			continue;
 		}
 
-		if (_up_bytes == up_bytes_prev && _down_bytes == down_bytes_prev)
+		if (_up_packs == up_packs_prev && _down_packs == down_packs_prev)
 			continue;
 
 		LOG(INFO) << "channel[" << _id << "] (" << _src_id
 				<< ")["    << _src_remote_ep
-				<< " <--> " << _src_local_ep.port()
-				<< " <--> " << _dst_local_ep.port()
 				<< " <--> " << _dst_remote_ep
 				<< "]("    << _dst_id << ") "
-				<< "upload(" << _up_packs << "): " << formatBytes(_up_bytes) << ". "
-				<< formatBytes((_up_bytes - up_bytes_prev) / _display_timeout) << "/s | "
-				<< "download(" << _down_packs << "): " << formatBytes(_down_bytes) << ". "
-				<< formatBytes((_down_bytes - down_bytes_prev) / _display_timeout) << "/s";
+				<< "Tx(" << formatBytes((_up_bytes - up_bytes_prev) / _display_timeout)
+				<< "/" << (_up_packs - up_packs_prev) / _display_timeout
+				<< " p) {" << formatBytes(_up_bytes) << ", "  << _up_packs
+				<< " p} | Rx(" << formatBytes((_down_bytes - down_bytes_prev) / _display_timeout)
+				<< "/" << (_down_packs - down_packs_prev) / _display_timeout
+				<< " p) {" << formatBytes(_down_bytes) << ", " << _down_packs
+				<< " p}"
+				;
 
 		up_bytes_prev = _up_bytes;
 		down_bytes_prev = _down_bytes;
+		up_packs_prev = _up_packs;
+		down_packs_prev = _down_packs;
 	}
 	LOG(TRACE) << "channel[" << _id << "] displayer exit!";
 }

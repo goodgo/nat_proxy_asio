@@ -91,7 +91,7 @@ private:
 	boost::weak_ptr<CSession> _src_session;
 	boost::weak_ptr<CSession> _dst_session;
 
-	enum { BUFFSIZE = 1500 };
+	enum { BUFFSIZE = 2048 };
 	char _src_buf[BUFFSIZE];
 	char _dst_buf[BUFFSIZE];
 

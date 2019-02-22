@@ -60,6 +60,7 @@ private:
 	CSafeMap<uint32_t, CSession> _session_map;
 	CSessionDb _session_db;
 
+	boost::atomic<uint32_t> _conn_num;
 	boost::atomic<uint32_t> _session_id;
 	boost::atomic<uint32_t> _channel_id;
 	bool _started;

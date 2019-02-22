@@ -19,6 +19,7 @@ CServer::CServer(uint32_t pool_size)
 , _signal_sets(_io_context_pool.getIoContext())
 , _acceptor(_io_context_pool.getIoContext())
 , _session_ptr()
+, _conn_num(0)
 , _session_id(1000)
 , _channel_id(1)
 , _started(true)
@@ -91,12 +92,14 @@ void CServer::startAccept()
 
 void CServer::onAccept(const boost::system::error_code& ec)
 {
-	LOGF(TRACE) << "accept conn: [" << _session_ptr->socket().remote_endpoint()
-			<< "] ec: " << ec.message();
 	if (ec) {
-		LOGF(DEBUG) << "accept error: " << ec.message();
+		LOGF(ERR) << "accept error: " << ec.message();
 		return;
 	}
+	_conn_num.fetch_add(1);
+
+	LOGF(INFO) << "accept connection: [CONN@" << _session_ptr->socket().remote_endpoint()
+				 << "] {N:" << _conn_num << "}";
 
 	_session_ptr->start();
 	startAccept();
@@ -109,8 +112,8 @@ void CServer::closeSession(CSession::SelfType sess)
 		_session_map.remove(sess->id());
 		_session_db.del(sess->id());
 	}
-
-	LOGF(TRACE) << "server close session[" << sess->id() << "] [" << sess->guid() << "]";
+	_conn_num.sub(1);
+	LOGF(TRACE) << "server close connection [ID@" << sess->id() << "] {N:" << _conn_num << "}";
 }
 
 bool CServer::onLogin(CSession::SelfType sess)
