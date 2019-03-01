@@ -117,6 +117,8 @@ class CChannelMap
 public:
 	typedef uint32_t	ChannelId;
 	typedef boost::unordered_map<ChannelId, CChannel::SelfType> Map;
+	typedef Map::value_type ValueType;
+	typedef Map::iterator Iterator;
 
 	size_t size() {
 		boost::mutex::scoped_lock lk(_mutex);
@@ -128,13 +130,13 @@ public:
 		if (_map.end() != _map.find(id))
 			return false;
 
-		_map.insert(Map::value_type(id, value));
+		_map.insert(ValueType(id, value));
 		return true;
 	}
 
 	bool remove(const ChannelId& id) {
 		boost::mutex::scoped_lock lk(_mutex);
-		Map::iterator it = _map.find(id);
+		Iterator it = _map.find(id);
 		if (_map.end() == it)
 			return false;
 
@@ -157,7 +159,7 @@ public:
 
 	void stopAll() {
 		boost::mutex::scoped_lock lk(_mutex);
-		for (Map::iterator it = _map.begin(); it != _map.end();) {
+		for (Iterator it = _map.begin(); it != _map.end();) {
 			it->second->toStop();
 			it = _map.erase(it);
 		}

@@ -328,11 +328,11 @@ void CChannel::displayer(asio::yield_context yield)
 				<< " <--> " << _dst_remote_ep
 				<< "]("    << _dst_id << ") "
 				<< "Tx(" << formatBytes((_up_bytes - up_bytes_prev) / _display_timeout)
-				<< "/" << (_up_packs - up_packs_prev) / _display_timeout
-				<< " p) {" << formatBytes(_up_bytes) << ", "  << _up_packs
+				<< "ps/" << (_up_packs - up_packs_prev) / _display_timeout
+				<< " pps) {" << formatBytes(_up_bytes) << ", "  << _up_packs
 				<< " p} | Rx(" << formatBytes((_down_bytes - down_bytes_prev) / _display_timeout)
-				<< "/" << (_down_packs - down_packs_prev) / _display_timeout
-				<< " p) {" << formatBytes(_down_bytes) << ", " << _down_packs
+				<< "ps/" << (_down_packs - down_packs_prev) / _display_timeout
+				<< " pps) {" << formatBytes(_down_bytes) << ", " << _down_packs
 				<< " p}"
 				;
 

@@ -42,12 +42,27 @@ void CSession::stop()
 	{
 		_started = false;
 		boost::system::error_code ec;
-		_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-		_socket.close(ec);
+
 		_timer.cancel(ec);
+		if (ec)
+			LOG(ERR) << "session[" << _id << "] timer cancel error: " << ec;
+
+		_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+		if (ec)
+			LOG(ERR) << "session[" << _id << "] socket shutdown error: " << ec;
+
+		_socket.close(ec);
+		if (ec)
+			LOG(ERR) << "session[" << _id << "] socket close error: " << ec;
+
 		_server.closeSession(shared_from_this());
-		_src_channels.stopAll();
-		_dst_channels.stopAll();
+
+		if (_src_channels.size() > 0)
+			_src_channels.stopAll();
+
+		if (_dst_channels.size() > 0)
+			_dst_channels.stopAll();
+
 		LOGF(DEBUG) << "session[" << _id << "] stopped.";
 	}
 }

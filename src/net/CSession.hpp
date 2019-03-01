@@ -48,6 +48,7 @@ public:
 	CSession(CServer& server, asio::io_context& io_context, uint32_t timeout);
 	~CSession();
 	void start();
+	void toStop();
 	void stop();
 	bool isRuning() { return _started; }
 

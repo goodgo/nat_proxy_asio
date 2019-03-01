@@ -69,7 +69,7 @@ void CServer::start()
 	LOG(TRACE) << gConfig->procName()
 			<< " Version: " << SERVER_VERSION_DATE
 			<< " <Build: " << BUILD_VERSION
-			<< "> Core: " << _io_context_pool.workerNum()
+			<< "> Cores: " << _io_context_pool.workerNum()
 			<< ", service: [" << _acceptor.local_endpoint() << "]";
 
 	_session_db.start();
@@ -98,8 +98,9 @@ void CServer::onAccept(const boost::system::error_code& ec)
 	}
 	_conn_num.fetch_add(1);
 
-	LOGF(INFO) << "accept connection: [CONN@" << _session_ptr->socket().remote_endpoint()
-				 << "] {N:" << _conn_num << "}";
+	LOGF(INFO) << "accept [CONN@"
+			<< _session_ptr->socket().remote_endpoint()
+			<< "] {N:" << _conn_num << "}";
 
 	_session_ptr->start();
 	startAccept();
@@ -107,11 +108,12 @@ void CServer::onAccept(const boost::system::error_code& ec)
 
 void CServer::closeSession(CSession::SelfType sess)
 {
-	_guid_set.remove(sess->guid());
-	if (sess->logined() && sess->id() != DEFAULT_ID) {
-		_session_map.remove(sess->id());
+	if (sess->logined()) {
+		_guid_set.remove(sess->guid());
 		_session_db.del(sess->id());
+		_session_map.remove(sess->id());
 	}
+
 	_conn_num.sub(1);
 	LOGF(TRACE) << "server close connection [ID@" << sess->id() << "] {N:" << _conn_num << "}";
 }
@@ -126,6 +128,7 @@ bool CServer::onLogin(CSession::SelfType sess)
 	sess->id(allocSessionId());
 	if (!_session_map.insert(sess->id(), sess)) {
 		LOGF(ERR) << "session id[: " << sess->id() << "] insert failed.";
+		_guid_set.remove(sess->guid());
 		return false;
 	}
 
