@@ -34,7 +34,6 @@
 									<listOptionValue builtIn="false" value="/usr/local/include/"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.768599373" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="ENABLE_BOOST_CONTEXT=ON"/>
 									<listOptionValue builtIn="false" value="BOOST_COROUTINES_NO_DEPRECATION_WARNING"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.debugging.other.1208210992" name="Other debugging flags" superClass="gnu.cpp.compiler.option.debugging.other" value="-rdynamic" valueType="string"/>

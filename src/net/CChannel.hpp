@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include <boost/noncopyable.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -36,6 +37,7 @@ namespace asio {
 }
 
 class CChannel : public boost::enable_shared_from_this<CChannel>
+				, public boost::noncopyable
 {
 public:
 	typedef boost::shared_ptr<CChannel> SelfType;
@@ -116,7 +118,8 @@ class CChannelMap
 {
 public:
 	typedef uint32_t	ChannelId;
-	typedef boost::unordered_map<ChannelId, CChannel::SelfType> Map;
+	typedef boost::weak_ptr<CChannel> Value;
+	typedef boost::unordered_map<ChannelId, Value> Map;
 	typedef Map::value_type ValueType;
 	typedef Map::iterator Iterator;
 
@@ -125,7 +128,7 @@ public:
 		return _map.size();
 	}
 
-	bool insert(const ChannelId& id, CChannel::SelfType value) {
+	bool insert(const ChannelId& id, CChannel::SelfType& value) {
 		boost::mutex::scoped_lock lk(_mutex);
 		if (_map.end() != _map.find(id))
 			return false;
@@ -140,7 +143,7 @@ public:
 		if (_map.end() == it)
 			return false;
 
-		_map.erase(it);
+		_map.erase(id);
 		return true;
 	}
 
@@ -152,15 +155,10 @@ public:
 		return true;
 	}
 
-	CChannel::SelfType get(const ChannelId& id) {
-		boost::mutex::scoped_lock lk(_mutex);
-		return _map[id];
-	}
-
 	void stopAll() {
 		boost::mutex::scoped_lock lk(_mutex);
 		for (Iterator it = _map.begin(); it != _map.end();) {
-			it->second->toStop();
+			//it->second->toStop();
 			it = _map.erase(it);
 		}
 	}

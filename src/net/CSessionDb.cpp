@@ -41,11 +41,12 @@ void CSessionDb::stop()
 
 void CSessionDb::worker()
 {
+	LOGF(TRACE) << "session db thread start.";
 	while(_started) {
 		operate();
 		serial();
 	}
-	LOG(TRACE) << "session db thread exit.";
+	LOGF(TRACE) << "session db thread exit.";
 }
 
 void CSessionDb::operate()

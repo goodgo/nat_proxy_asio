@@ -48,6 +48,7 @@ public:
 			if (_chann_display_timeout == 0)
 				_chann_display_timeout = 60;
 
+			print();
 			return true;
 		}
 		catch (boost::property_tree::ini_parser_error &e)

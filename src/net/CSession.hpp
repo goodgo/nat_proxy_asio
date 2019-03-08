@@ -110,16 +110,41 @@ private:
 class CSessionMap
 {
 public:
+	typedef uint32_t SessionId;
 	typedef boost::weak_ptr<CSession> Value;
-	typedef boost::unordered_map<uint32_t, Value> Map;
+	typedef boost::unordered_map<SessionId, Value> Map;
 	typedef Map::iterator Iterator;
 
-	CSessionMap();
-	~CSessionMap();
+	CSessionMap() {}
+	~CSessionMap() {}
 
-	bool set(uint32_t id, const CSession::SelfType& ss);
-	CSession::SelfType get(uint32_t id);
-	void del(uint32_t id);
+	bool set(const SessionId& id, const CSession::SelfType& ss)
+	{
+		boost::mutex::scoped_lock lock(_mutex);
+		if (_map.find(id) != _map.end())
+			return false;
+
+		_map.insert(Map::value_type(id, ss));
+		return true;
+	}
+
+	CSession::SelfType get(const SessionId& id)
+	{
+		CSession::SelfType ss;
+		boost::mutex::scoped_lock lock(_mutex);
+		Iterator it = _map.find(id);
+		if (it == _map.end())
+			return ss;
+
+		ss = it->second.lock();
+		return ss;
+	}
+
+	void del(const SessionId& id)
+	{
+		boost::mutex::scoped_lock lock(_mutex);
+		_map.erase(id);
+	}
 
 private:
 	mutable boost::mutex _mutex;

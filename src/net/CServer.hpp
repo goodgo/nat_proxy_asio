@@ -42,7 +42,7 @@ public:
 	bool onLogin(CSession::SelfType sess);
 	boost::shared_ptr<std::string> getAllSessions(CSession::SelfType sess);
 	CSession::SelfType getSession(CSession::SelfType sess, uint32_t id);
-	CChannel::SelfType createChannel(CSession::SelfType src, CSession::SelfType ds);
+	CChannel::SelfType createChannel(CSession::SelfType src, CSession::SelfType dst);
 
 private:
 	void startAccept();

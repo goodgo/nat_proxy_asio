@@ -67,7 +67,7 @@ void CServer::stop()
 
 void CServer::start()
 {
-	LOG(TRACE) << gConfig->procName()
+	LOGF(TRACE) << gConfig->procName()
 			<< " Version: " << SERVER_VERSION_DATE
 			<< " <Build: " << BUILD_VERSION
 #if !defined(NDEBUG)

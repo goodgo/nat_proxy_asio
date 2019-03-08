@@ -23,6 +23,10 @@ CIoContextPool::CIoContextPool(size_t pool_size)
 		io_context_ptr io = boost::make_shared<asio::io_context>();
 		_io_contexts.push_back(io);
 		_io_context_works.push_back(asio::make_work_guard(*io));
+
+		LOG(INFO) << "[context] gettid: " << gettid()
+				<< ", pthread_self: " << (unsigned int)pthread_self()
+				<< ", bind context: " << i;
 	}
 }
 
@@ -39,6 +43,11 @@ void CIoContextPool::run()
 		boost::shared_ptr<boost::thread> t(new boost::thread(
 				boost::bind(&asio::io_context::run, _io_contexts[i])));
 		threads.push_back(t);
+
+		LOG(INFO) << "[thread] gettid: " << gettid()
+				<< ", get_id: " << t->get_id()
+				<< ", pthread_self: " << (unsigned int)pthread_self()
+				<< ", bind context: " << i;
 	}
 
 	for (size_t i = 0; i < threads.size(); i++) {
@@ -58,6 +67,8 @@ void CIoContextPool::stop()
 asio::io_context& CIoContextPool::getIoContext()
 {
 	asio::io_context& io = *_io_contexts[_next_context_index];
+
+	LOG(INFO) << "get io context: " << _next_context_index;
 	++_next_context_index;
 	if (_next_context_index == _io_contexts.size())
 		_next_context_index = 0;

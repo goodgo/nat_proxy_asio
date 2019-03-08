@@ -22,9 +22,12 @@
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/severity_feature.hpp>
 #include <boost/log/expressions/formatters.hpp>
+#include <boost/phoenix.hpp>
 #include <CLogger.hpp>
 #include <fstream>
 #include <string>
+
+
 
 namespace logging = boost::log;
 namespace attrs = boost::log::attributes;
@@ -32,6 +35,30 @@ namespace src = boost::log::sources;
 namespace sinks = boost::log::sinks;
 namespace expr = boost::log::expressions;
 namespace keywords = boost::log::keywords;
+
+/* Define place holder attributes */
+BOOST_LOG_ATTRIBUTE_KEYWORD(process_id, "ProcessID", attrs::current_process_id::value_type)
+BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID", attrs::current_thread_id::value_type)
+
+// Get Process native ID
+attrs::current_process_id::value_type::native_type get_native_process_id(
+        logging::value_ref<attrs::current_process_id::value_type,
+        tag::process_id> const& pid)
+{
+    if (pid)
+        return pid->native_id();
+    return 0;
+}
+
+// Get Thread native ID
+attrs::current_thread_id::value_type::native_type get_native_thread_id(
+        logging::value_ref<attrs::current_thread_id::value_type,
+        tag::thread_id> const& tid)
+{
+    if (tid)
+        return tid->native_id();
+    return 0;
+}
 
 
 template< typename CharT, typename TraitsT >
@@ -78,9 +105,13 @@ void initLog(const std::string& proc_name, const std::string& path, size_t rotat
 	typedef sinks::synchronous_sink<sinks::text_file_backend> FileSink;
 	boost::shared_ptr<FileSink> file_sink = boost::make_shared<FileSink>(file_backend);
 	file_sink->set_formatter (
-		expr::format("[%1%] [TID:%2%] [%3%] >> %4%")
-		% expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S")
-		% expr::attr<attrs::current_thread_id::value_type>("ThreadID")
+		expr::format("[PID:%1%][TID:%2%] [ttid:%3%] [%4%] [%5%] >> %6%")
+		% boost::phoenix::bind(&get_native_process_id, process_id.or_none())
+		% boost::phoenix::bind(&get_native_thread_id, thread_id.or_none())
+		//% expr::attr<attrs::current_thread_id::value_type>("ThreadID")
+		% gettid()
+		//% (uint32_t)pthread_self()
+		% expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y%m%d %H:%M:%S")
 		% expr::attr<LogLevel>("Severity")
 		% expr::smessage
 	);
