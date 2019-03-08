@@ -53,10 +53,11 @@ CServer::~CServer()
 void CServer::stop()
 {
 	if (_started) {
+		LOGF(INFO) << "server stoping.";
+
 		_started = false;
 		boost::system::error_code ec;
-		//_acceptor.cancel(ec);
-		//_acceptor.close(ec);
+		_acceptor.cancel(ec);
 		//_session_map.removeAll();
 		_session_db.stop();
 		_io_context_pool.stop();
@@ -69,6 +70,9 @@ void CServer::start()
 	LOG(TRACE) << gConfig->procName()
 			<< " Version: " << SERVER_VERSION_DATE
 			<< " <Build: " << BUILD_VERSION
+#if !defined(NDEBUG)
+			<< "(D)"
+#endif
 			<< "> Cores: " << _io_context_pool.workerNum()
 			<< ", service: [" << _acceptor.local_endpoint() << "]";
 
@@ -111,7 +115,8 @@ void CServer::closeSession(CSession::SelfType sess)
 	if (sess->logined()) {
 		_guid_set.remove(sess->guid());
 		_session_db.del(sess->id());
-		_session_map.remove(sess->id());
+		_session_map.del(sess->id());
+		_session_map.del(sess->id());
 	}
 
 	_conn_num.sub(1);
@@ -126,7 +131,7 @@ bool CServer::onLogin(CSession::SelfType sess)
 	}
 
 	sess->id(allocSessionId());
-	if (!_session_map.insert(sess->id(), sess)) {
+	if (!_session_map.set(sess->id(), sess)) {
 		LOGF(ERR) << "session id[: " << sess->id() << "] insert failed.";
 		_guid_set.remove(sess->guid());
 		return false;
@@ -140,6 +145,14 @@ bool CServer::onLogin(CSession::SelfType sess)
 
 CSession::SelfType CServer::getSession(CSession::SelfType sess, uint32_t id)
 {
+	CSession::SelfType ss = _session_map.get(id);
+	if (!ss) {
+		LOGF(DEBUG) << "session[" << sess->id() << "] get dest[" << id << " ] failed.";
+		return sess;
+	}
+	return ss;
+
+/*
 	boost::weak_ptr<CSession> wptr = _session_map.get(id);
 	if (wptr.expired()) {
 		LOGF(DEBUG) << "session[" << sess->id() << "] get dest[" << id << " ] failed.";
@@ -147,6 +160,7 @@ CSession::SelfType CServer::getSession(CSession::SelfType sess, uint32_t id)
 	}
 	CSession::SelfType ss = wptr.lock();
 	return ss;
+*/
 }
 
 CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::SelfType dst)

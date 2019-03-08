@@ -33,8 +33,11 @@
 									<listOptionValue builtIn="false" value="../src/openssl"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.768599373" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def"/>
-								<option id="gnu.cpp.compiler.option.debugging.other.1208210992" superClass="gnu.cpp.compiler.option.debugging.other" value="-rdynamic" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.768599373" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="ENABLE_BOOST_CONTEXT=ON"/>
+									<listOptionValue builtIn="false" value="BOOST_COROUTINES_NO_DEPRECATION_WARNING"/>
+								</option>
+								<option id="gnu.cpp.compiler.option.debugging.other.1208210992" name="Other debugging flags" superClass="gnu.cpp.compiler.option.debugging.other" value="-rdynamic" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1286170914" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.614256575" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug">
@@ -49,6 +52,7 @@
 									<listOptionValue builtIn="false" value="../src/thread"/>
 									<listOptionValue builtIn="false" value="../src/util"/>
 								</option>
+								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1354822109" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1083770889" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.163474202" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug"/>
@@ -123,6 +127,11 @@
 									<listOptionValue builtIn="false" value="../src/openssl"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/"/>
 								</option>
+								<option id="gnu.cpp.compiler.option.preprocessor.def.49665070" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="NDEBUG"/>
+									<listOptionValue builtIn="false" value="BOOST_COROUTINES_NO_DEPRECATION_WARNING"/>
+									<listOptionValue builtIn="false" value="ENABLE_BOOST_CONTEXT=ON"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.930705598" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.1427925331" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -137,6 +146,7 @@
 									<listOptionValue builtIn="false" value="../src/thread"/>
 									<listOptionValue builtIn="false" value="../src/util"/>
 								</option>
+								<option id="gnu.c.compiler.option.preprocessor.def.symbols.41715104" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1963120868" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.722259901" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>

@@ -8,7 +8,6 @@
 #ifndef SRC_NET_CSESSION_HPP_
 #define SRC_NET_CSESSION_HPP_
 
-#include "CProtocol.hpp"
 #include <boost/system/error_code.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
@@ -27,6 +26,7 @@
 #include <string>
 #include <deque>
 
+#include "CProtocol.hpp"
 #include "CChannel.hpp"
 #include "CSafeMap.hpp"
 #include "util.hpp"
@@ -103,6 +103,27 @@ private:
 	std::string		_guid;
 	bool 			_logined;
 	boost::atomic<bool>	_started;
+};
+
+///////////////////////////////////////////////////////////////////
+
+class CSessionMap
+{
+public:
+	typedef boost::weak_ptr<CSession> Value;
+	typedef boost::unordered_map<uint32_t, Value> Map;
+	typedef Map::iterator Iterator;
+
+	CSessionMap();
+	~CSessionMap();
+
+	bool set(uint32_t id, const CSession::SelfType& ss);
+	CSession::SelfType get(uint32_t id);
+	void del(uint32_t id);
+
+private:
+	mutable boost::mutex _mutex;
+	Map _map;
 };
 
 #endif /* SRC_NET_CSESSION_HPP_ */

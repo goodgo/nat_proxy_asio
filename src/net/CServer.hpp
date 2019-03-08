@@ -10,6 +10,7 @@
 
 #include <boost/unordered/unordered_map.hpp>
 #include <boost/unordered/unordered_set.hpp>
+#include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/thread/mutex.hpp>
@@ -19,12 +20,11 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
 
-#include "CSessionDb.hpp"
 #include "CIoContextPool.hpp"
 #include "CSession.hpp"
+#include "CSessionDb.hpp"
 #include "CChannel.hpp"
 #include "CSafeSet.hpp"
-#include "CSafeMap.hpp"
 #include "util.hpp"
 
 namespace asio {
@@ -57,7 +57,8 @@ private:
 	CSession::SelfType _session_ptr;
 
 	CSafeSet<std::string> _guid_set;
-	CSafeMap<uint32_t, CSession> _session_map;
+	//CSafeMap<uint32_t, CSession> _session_map;
+	CSessionMap _session_map;
 	CSessionDb _session_db;
 
 	boost::atomic<uint32_t> _conn_num;
@@ -65,6 +66,7 @@ private:
 	boost::atomic<uint32_t> _channel_id;
 	bool _started;
 };
+
 
 
 #endif /* SRC_NET_CSERVER_HPP_ */

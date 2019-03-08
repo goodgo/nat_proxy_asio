@@ -32,7 +32,7 @@ CPP_DEPS += \
 src/net/%.o: ../src/net/%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
-	g++ -I../src -I../src/data -I../src/net -I../src/thread -I../src/util -I../src/openssl -I/usr/local/include/ -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	g++ -DNDEBUG -DENABLE_BOOST_CONTEXT=ON -I../src -I../src/data -I../src/net -I../src/thread -I../src/util -I../src/openssl -I/usr/local/include/ -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

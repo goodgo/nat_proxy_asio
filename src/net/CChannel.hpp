@@ -166,7 +166,7 @@ public:
 	}
 
 private:
-	boost::mutex _mutex;
+	mutable boost::mutex _mutex;
 	Map _map;
 };
 
