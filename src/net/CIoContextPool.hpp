@@ -25,6 +25,9 @@ namespace asio {
 
 class CIoContextPool : private boost::noncopyable
 {
+	typedef boost::shared_ptr<asio::io_context> io_context_ptr;
+	typedef asio::executor_work_guard<asio::io_context::executor_type> io_context_work;
+
 public:
 	CIoContextPool(size_t pool_size);
 	~CIoContextPool();
@@ -32,12 +35,10 @@ public:
 	void run();
 	void stop();
 	asio::io_context& getIoContext();
+	void startThread(io_context_ptr& io);
 	size_t workerNum() { return _worker_num; }
 
 private:
-	typedef boost::shared_ptr<asio::io_context> io_context_ptr;
-	typedef asio::executor_work_guard<asio::io_context::executor_type> io_context_work;
-
 	std::vector<io_context_ptr > _io_contexts;
 	std::list<io_context_work > _io_context_works;
 	size_t _next_context_index;

@@ -58,7 +58,9 @@ public:
 		uiAddr = info.uiAddr;
 		return *this;
 	}
-	static uint8_t size() {
+
+	static uint8_t size()
+	{
 		return static_cast<uint8_t>(
 				sizeof(uiId)+
 				sizeof(uiAddr));

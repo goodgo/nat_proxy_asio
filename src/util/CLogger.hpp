@@ -42,6 +42,6 @@ void finitLog();
 BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, boost::log::sources::severity_logger_mt<LogLevel>)
 
 #define LOG(level)  BOOST_LOG_STREAM_SEV(logger::get(), level)
-#define LOGF(level) LOG(level) << " ttid:" << gettid() << "[" << __FILE__ << ":" << __FUNCTION__ << "():" << __LINE__ << "] >> "
+#define LOGF(level) LOG(level) << "[" << __FILE__ << ":" << __FUNCTION__ << "():" << __LINE__ << "] >> "
 
 #endif

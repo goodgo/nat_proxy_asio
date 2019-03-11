@@ -68,14 +68,14 @@ inline std::basic_ostream< CharT, TraitsT >& operator<< (
 	static const char* const str[] = {
 			"TRACE",
 			"DEBUG",
-			"INFO",
-			"WARN",
+			"INFO ",
+			"WARN ",
 			"ERROR",
 			"FATAL",
 			"REPORT"
 	};
 	if (static_cast<std::size_t>(lvl) < (sizeof(str) / sizeof(*str)))
-		strm << str[lvl];
+		strm << str[lvl] << "] [#" << gettid();
 	else
 		strm << static_cast<int>(lvl);
 	return strm;
@@ -105,13 +105,9 @@ void initLog(const std::string& proc_name, const std::string& path, size_t rotat
 	typedef sinks::synchronous_sink<sinks::text_file_backend> FileSink;
 	boost::shared_ptr<FileSink> file_sink = boost::make_shared<FileSink>(file_backend);
 	file_sink->set_formatter (
-		expr::format("[PID:%1%][TID:%2%] [ttid:%3%] [%4%] [%5%] >> %6%")
+		expr::format("[P:%1%] [%2%] [%3%]> %4%")
 		% boost::phoenix::bind(&get_native_process_id, process_id.or_none())
-		% boost::phoenix::bind(&get_native_thread_id, thread_id.or_none())
-		//% expr::attr<attrs::current_thread_id::value_type>("ThreadID")
-		% gettid()
-		//% (uint32_t)pthread_self()
-		% expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y%m%d %H:%M:%S")
+		% expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y%m%d %H:%M:%S.%f")
 		% expr::attr<LogLevel>("Severity")
 		% expr::smessage
 	);

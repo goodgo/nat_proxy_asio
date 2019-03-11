@@ -16,6 +16,7 @@
 #include <boost/noncopyable.hpp>
 
 #include <boost/program_options.hpp>
+#include "version.h"
 
 class CConfig
 {
@@ -48,7 +49,7 @@ public:
 			if (_chann_display_timeout == 0)
 				_chann_display_timeout = 60;
 
-			print();
+			//print();
 			return true;
 		}
 		catch (boost::property_tree::ini_parser_error &e)
@@ -98,6 +99,7 @@ protected:
 		boost::program_options::options_description desc(_proc_name + " allow option");
 		desc.add_options()
 				("help,h", "help message")
+				("version,v", "version")
 				("file,f", boost::program_options::value<std::string>(&_cfg_file), "config file path")
 				("log,l", boost::program_options::value<std::string>(&_log_path), "log storage directory")
 				("daemon,d", boost::program_options::value<bool>(&_daemon), "daemon option");
@@ -109,6 +111,11 @@ protected:
 
 		if (vm.count("help")) {
 			std::cerr << "help: " << desc << std::endl;
+			return false;
+		}
+
+		if (vm.count("version")) {
+			std::cerr << "version: " << BUILD_VERSION << std::endl;
 			return false;
 		}
 
