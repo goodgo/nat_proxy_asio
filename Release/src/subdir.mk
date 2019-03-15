@@ -17,7 +17,7 @@ CPP_DEPS += \
 src/%.o: ../src/%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
-	g++ -DNDEBUG -DENABLE_BOOST_CONTEXT=ON -I../src -I../src/data -I../src/net -I../src/thread -I../src/util -I../src/openssl -I/usr/local/include/ -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	g++ -DNDEBUG -DBOOST_COROUTINES_NO_DEPRECATION_WARNING -DENABLE_BOOST_CONTEXT=ON -I../src -I/usr/local/include/ -O3 -rdynamic -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

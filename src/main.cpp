@@ -5,15 +5,16 @@
  *      Author: root
  */
 
-#include "CLogger.hpp"
-#include "CServer.hpp"
-#include "util.hpp"
-#include "CConfig.hpp"
+#include <iostream>
+#include "net/CServer.hpp"
+#include "util/CLogger.hpp"
+#include "util/util.hpp"
+#include "util/CConfig.hpp"
 
 int main(int argc, char* argv[])
 {
 	if (!gConfig->init(argc, argv)) {
-		gConfig->print();
+		std::cout << "config parse error!" << std::endl;
 		return 0;
 	}
 
@@ -22,10 +23,13 @@ int main(int argc, char* argv[])
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);
 	signal(SIGTTIN, SIG_IGN);
+	signal(SIGABRT, util::printBacktrace);
+	signal(SIGTERM, util::printBacktrace);
+	signal(SIGSEGV, util::printBacktrace);
 
 	if (gConfig->daemon()) {
 		if (!util::daemon()) {
-			std::cerr << "daemon failed." << std::endl;
+			std::cout << "daemon failed." << std::endl;
 			return 0;
 		}
 	}
@@ -37,11 +41,14 @@ int main(int argc, char* argv[])
 				gConfig->logFileSize(),
 				gConfig->logLevel());
 		CServer server(gConfig->workerNum());
-		server.start();
+		if (!server.start()) {
+			LOGF(ERR) << "server start failed!";
+			return 0;
+		}
 	}
 	catch(std::exception& e)
 	{
-		std::cerr << "server crash: " << e.what() << std::endl;
+		std::cout << "server crash: " << e.what() << std::endl;
 	}
 
 	return 0;

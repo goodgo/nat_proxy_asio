@@ -6,8 +6,8 @@
  */
 
 #include "CSessionDb.hpp"
-#include "CLogger.hpp"
-#include "util.hpp"
+#include "util/CLogger.hpp"
+#include "util/util.hpp"
 
 CSessionDb::CSessionDb()
 : _thread()
@@ -61,12 +61,12 @@ void CSessionDb::operate()
 	const OperationItem& item = _op_stack.front();
 
 	switch(item.op)	{
-	case EN_ADD: {
+	case OPT::ADD: {
 		_db.insert(std::make_pair(item.info.uiId, item.info));
 		LOG(TRACE) << "session db add[" << item.info.uiId << "] size: " << _db.size();
 		break;
 	}
-	case EN_DEL: {
+	case OPT::DEL: {
 		_db.erase(item.info.uiId);
 		LOG(TRACE) << "session db del[" << item.info.uiId << "] size: " << _db.size();
 		break;
@@ -110,7 +110,7 @@ void CSessionDb::serial()
 void CSessionDb::add(const SSessionInfo& info)
 {
 	OperationItem item;
-	item.op = EN_ADD;
+	item.op = OPT::ADD;
 	item.info = info;
 	{
 		boost::mutex::scoped_lock lk(_op_mutex);
@@ -122,7 +122,7 @@ void CSessionDb::add(const SSessionInfo& info)
 void CSessionDb::del(uint32_t id)
 {
 	OperationItem item;
-	item.op = EN_DEL;
+	item.op = OPT::DEL;
 	item.info.uiId = id;
 	{
 		boost::mutex::scoped_lock lk(_op_mutex);

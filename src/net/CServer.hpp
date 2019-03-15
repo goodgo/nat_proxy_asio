@@ -21,11 +21,12 @@
 #include <boost/asio/placeholders.hpp>
 
 #include "CIoContextPool.hpp"
+#include "CSessionMgr.hpp"
 #include "CSession.hpp"
 #include "CSessionDb.hpp"
 #include "CChannel.hpp"
-#include "CSafeSet.hpp"
-#include "util.hpp"
+#include "util/CSafeSet.hpp"
+#include "util/util.hpp"
 
 namespace asio {
 	using namespace boost::asio;
@@ -36,34 +37,24 @@ class CServer : private boost::noncopyable
 public:
 	CServer(uint32_t pool_size);
 	~CServer();
-	void start();
+	bool init();
+	bool start();
 	void stop();
-	void closeSession(CSession::SelfType sess);
-	bool onLogin(CSession::SelfType sess);
-	boost::shared_ptr<std::string> getAllSessions(CSession::SelfType sess);
-	CSession::SelfType getSession(CSession::SelfType sess, uint32_t id);
-	CChannel::SelfType createChannel(CSession::SelfType src, CSession::SelfType dst);
+	void sessionClosed();
+	void signalHandle(const boost::system::error_code& ec, int sig);
 
 private:
 	void startAccept();
 	void onAccept(const boost::system::error_code& ec);
-	uint32_t allocSessionId() { return _session_id.fetch_add(1); }
-	uint32_t allocChannelId() { return _channel_id.fetch_add(1); }
 
 private:
 	CIoContextPool _io_context_pool;
 	asio::signal_set _signal_sets;
 	asio::ip::tcp::acceptor _acceptor;
 	CSession::SelfType _session_ptr;
-
-	CSafeSet<std::string> _guid_set;
-	//CSafeMap<uint32_t, CSession> _session_map;
-	CSessionMap _session_map;
-	CSessionDb _session_db;
+	boost::shared_ptr<CSessionMgr> _session_mgr;
 
 	boost::atomic<uint32_t> _conn_num;
-	boost::atomic<uint32_t> _session_id;
-	boost::atomic<uint32_t> _channel_id;
 	bool _started;
 };
 

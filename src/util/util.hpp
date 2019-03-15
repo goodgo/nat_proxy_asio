@@ -8,11 +8,18 @@
 #ifndef SRC_UTIL_UTIL_HPP_
 #define SRC_UTIL_UTIL_HPP_
 
+
 #include <string>
 #include <iomanip>
-#include <string>
-#include <boost/spirit/include/karma.hpp>
-#include "CLogger.hpp"
+#include <sstream>
+#include <iostream>
+
+extern "C"
+{
+#include <stdint.h>
+#include <sys/syscall.h>
+}
+#define gettid() syscall(SYS_gettid)
 
 const uint64_t KB = 1024;
 const uint64_t MB = 1024 * KB;
@@ -41,7 +48,10 @@ namespace util {
 	}
 
 	bool daemon();
+
 	std::string formatBytes(const uint64_t& bytes);
+
+	void printBacktrace(int sig);
 }
 
 

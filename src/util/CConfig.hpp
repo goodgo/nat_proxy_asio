@@ -14,7 +14,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/noncopyable.hpp>
-
 #include <boost/program_options.hpp>
 #include "version.h"
 
@@ -45,6 +44,9 @@ public:
 			_login_timeout = _cfg.get<uint32_t>("srv.login_timeout", 30);
 			if (!_daemon)
 				_daemon = 1 == _cfg.get<uint32_t>("srv.daemon", 0);
+
+			_chann_rbuff_size = _cfg.get<uint32_t>("channel.rbuff_size", 1500);
+			_chann_sbuff_size = _cfg.get<uint32_t>("channel.sbuff_size", 1500);
 			_chann_display_timeout = _cfg.get<uint32_t>("channel.display_timeout", 60);
 			if (_chann_display_timeout == 0)
 				_chann_display_timeout = 60;
@@ -54,7 +56,7 @@ public:
 		}
 		catch (boost::property_tree::ini_parser_error &e)
 		{
-			std::cerr << "read ini error: " << e.what() << std::endl;
+			std::cout << "read ini error: " << e.what() << std::endl;
 			return false;
 		}
 	}
@@ -68,25 +70,29 @@ public:
 	uint16_t listenPort() const { return _listen_port; }
 	uint8_t workerNum() const { return _worker_num; }
 	uint32_t loginTimeout() const { return _login_timeout; }
+	uint32_t channReceiveBuffSize() const { return _chann_rbuff_size; }
+	uint32_t channSendBuffSize() const { return _chann_sbuff_size; }
 	uint32_t channDisplayTimeout() const { return _chann_display_timeout; }
 	bool daemon() const { return _daemon; }
 
 	/////////////////////////////////////////////////////////////////////
-	void print()
+	std::string print()
 	{
-		std::cout << "================ config ================" << std::endl;
-		std::cout << "process name: " << procName() << std::endl;
-		std::cout << "config file: " << _cfg_file << std::endl;
-		std::cout << "log path: " << logPath() << std::endl;
-		std::cout << "log file size: " << logFileSize() << std::endl;
-		std::cout << "log level: " << (int)logLevel() << std::endl;
-		std::cout << "server addr: " << srvAddr() << std::endl;
-		std::cout << "listen port: " << listenPort() << std::endl;
-		std::cout << "worker num: " << (int)workerNum() << std::endl;
-		std::cout << "login timeout: " << loginTimeout() << std::endl;
-		std::cout << "channel display timeout: " << channDisplayTimeout() << std::endl;
-		std::cout << "is daemon: " << std::boolalpha << daemon() << std::endl;
-		std::cout << "========================================" << std::endl;
+		std::stringstream ss;
+		ss << "[config file: " << _cfg_file
+			<< "][log path: " << logPath()
+			<< "][log file size: " << logFileSize()
+			<< "][log level: " << (int)logLevel()
+			<< "][server addr: " << srvAddr()
+			<< "][listen port: " << listenPort()
+			<< "][worker num: " << (int)workerNum()
+			<< "][login timeout: " << loginTimeout()
+			<< "][channel receive buffer size: " << channReceiveBuffSize()
+			<< "][channel send buffer size: " << channSendBuffSize()
+			<< "][channel display timeout: " << channDisplayTimeout()
+			<< "][is daemon: " << std::boolalpha << daemon()
+			<< "]";
+		return ss.str();
 	}
 
 protected:
@@ -110,12 +116,12 @@ protected:
 		boost::program_options::notify(vm);
 
 		if (vm.count("help")) {
-			std::cerr << "help: " << desc << std::endl;
+			std::cout << "help: " << desc << std::endl;
 			return false;
 		}
 
 		if (vm.count("version")) {
-			std::cerr << "version: " << BUILD_VERSION << std::endl;
+			std::cout << "version: " << BUILD_VERSION << std::endl;
 			return false;
 		}
 
@@ -135,6 +141,8 @@ protected:
 	, _listen_port(0)
 	, _worker_num(0)
 	, _login_timeout(0)
+	, _chann_rbuff_size(1500)
+	, _chann_sbuff_size(1500)
 	, _chann_display_timeout(0)
 	, _daemon(false)
 	{}
@@ -151,6 +159,8 @@ private:
 	uint16_t 	_listen_port;
 	uint8_t		_worker_num;
 	uint32_t 	_login_timeout;
+	uint32_t 	_chann_rbuff_size;
+	uint32_t	_chann_sbuff_size;
 	uint32_t 	_chann_display_timeout;
 	bool		_daemon;
 };

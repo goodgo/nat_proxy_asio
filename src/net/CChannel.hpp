@@ -48,6 +48,8 @@ public:
 			boost::shared_ptr<CSession> dst_session,
 			asio::ip::udp::endpoint& src_ep,
 			asio::ip::udp::endpoint& dst_ep,
+			uint32_t rbuff_size = 1500,
+			uint32_t sbuff_size = 1500,
 			uint32_t display_timeout = 60);
 	~CChannel();
 
@@ -93,9 +95,8 @@ private:
 	boost::weak_ptr<CSession> _src_session;
 	boost::weak_ptr<CSession> _dst_session;
 
-	enum { BUFFSIZE = 2048 };
-	char _src_buf[BUFFSIZE];
-	char _dst_buf[BUFFSIZE];
+	std::vector<char> _src_buf;
+	std::vector<char> _dst_buf;
 
 	uint32_t _id;
 	uint32_t _src_id;
@@ -158,7 +159,10 @@ public:
 	void stopAll() {
 		boost::mutex::scoped_lock lk(_mutex);
 		for (Iterator it = _map.begin(); it != _map.end();) {
-			//it->second->toStop();
+			Value& value = it->second;
+			CChannel::SelfType chann = value.lock();
+			if (chann)
+				chann->toStop();
 			it = _map.erase(it);
 		}
 	}

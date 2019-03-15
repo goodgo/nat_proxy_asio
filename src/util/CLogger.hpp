@@ -12,10 +12,10 @@
 #include <boost/log/trivial.hpp>
 #include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sources/severity_logger.hpp>
-#include <unistd.h>
-#include <sys/syscall.h>
 
-#define gettid() syscall(SYS_gettid)
+extern "C" {
+#include <unistd.h>
+}
 
 enum LogLevel {
 	TRACE,

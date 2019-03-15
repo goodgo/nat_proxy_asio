@@ -10,9 +10,9 @@
 #include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/asio/io_context.hpp>
-#include "CLogger.hpp"
-#include "version.h"
-#include "CConfig.hpp"
+#include "util/version.h"
+#include "util/CLogger.hpp"
+#include "util/CConfig.hpp"
 
 CServer::CServer(uint32_t pool_size)
 : _io_context_pool(pool_size)
@@ -20,28 +20,9 @@ CServer::CServer(uint32_t pool_size)
 , _acceptor(_io_context_pool.getIoContext())
 , _session_ptr()
 , _conn_num(0)
-, _session_id(1000)
-, _channel_id(1)
 , _started(true)
 {
-	_signal_sets.add(SIGTERM);
-	_signal_sets.add(SIGINT);
-#ifdef SIGQUIT
-	_signal_sets.add(SIGQUIT);
-#endif
 
-	_signal_sets.async_wait(boost::bind(&CServer::stop, this));
-
-	asio::ip::tcp::endpoint ep(
-			asio::ip::address::from_string(gConfig->srvAddr()),
-			gConfig->listenPort());
-	_acceptor.open(ep.protocol());
-	if (!_acceptor.is_open())
-		throw std::runtime_error("open acceptor failed.");
-
-	_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
-	_acceptor.bind(ep);
-	_acceptor.listen();
 }
 
 CServer::~CServer()
@@ -50,40 +31,97 @@ CServer::~CServer()
 	finitLog();
 }
 
+void CServer::signalHandle(const boost::system::error_code& ec, int sig)
+{
+	LOGF(ERR) << "server catch signal: " << sig << ", error: " << ec.message();
+	stop();
+}
+
 void CServer::stop()
 {
 	if (_started) {
-		LOGF(INFO) << "server stoping.";
-
 		_started = false;
+
 		boost::system::error_code ec;
 		_acceptor.cancel(ec);
-		//_session_map.removeAll();
-		_session_db.stop();
+		_signal_sets.cancel(ec);
+		_session_ptr.reset();
+		_session_mgr->stop();
 		_io_context_pool.stop();
-		LOGF(WARNING) << "server stopped.";
+
+		LOG(WARNING) << "****************** Server Stopped. Version: "
+				<< SERVER_VERSION_DATE << " <Build: " << BUILD_VERSION
+#if !defined(NDEBUG)
+				<< "(D)"
+#endif
+				<< "> ******************";
 	}
 }
 
-void CServer::start()
+bool CServer::init()
 {
-	LOGF(TRACE) << gConfig->procName()
+	boost::system::error_code ec;
+
+	_signal_sets.add(SIGTERM);
+	_signal_sets.add(SIGINT);
+	_signal_sets.add(SIGABRT);
+	_signal_sets.add(SIGSEGV);
+#ifdef SIGQUIT
+	_signal_sets.add(SIGQUIT);
+#endif
+
+	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, this, _1, _2));
+
+	asio::ip::tcp::endpoint ep(
+			asio::ip::address::from_string(gConfig->srvAddr()),
+			gConfig->listenPort());
+	_acceptor.open(ep.protocol(), ec);
+	if (ec || !_acceptor.is_open()) {
+		LOG(ERR) << "server open accept failed: " << ec.message();
+		return false;
+	}
+
+	_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+	_acceptor.bind(ep, ec);
+	if (ec) {
+		LOG(ERR) << "server bind[" << ep << "] failed: " << ec.message();
+		return false;
+	}
+
+	_acceptor.listen();
+	_session_mgr = boost::make_shared<CSessionMgr>(*this);
+	return true;
+}
+
+bool CServer::start()
+{
+	if (!init()) {
+		LOG(ERR) << "server init failed!";
+		return false;
+	}
+
+	LOG(INFO) << "******* "
+			<< gConfig->procName()
 			<< " Version: " << SERVER_VERSION_DATE
 			<< " <Build: " << BUILD_VERSION
 #if !defined(NDEBUG)
 			<< "(D)"
 #endif
 			<< "> Cores: " << _io_context_pool.workerNum()
-			<< ", service: [" << _acceptor.local_endpoint() << "]";
+			<< ", service: [" << _acceptor.local_endpoint() << "]"
+			<< " *******";
 
-	_session_db.start();
+	LOG(INFO) << gConfig->print();
+
+	_session_mgr->start();
 	startAccept();
-	_io_context_pool.run();
+	_io_context_pool.run();// block
+	return true;
 }
 
 void CServer::startAccept()
 {
-	_session_ptr.reset(new CSession(*this,
+	_session_ptr.reset(new CSession(_session_mgr,
 			_io_context_pool.getIoContext(),
 			gConfig->loginTimeout()));
 
@@ -100,6 +138,7 @@ void CServer::onAccept(const boost::system::error_code& ec)
 		LOGF(ERR) << "accept error: " << ec.message();
 		return;
 	}
+
 	_conn_num.fetch_add(1);
 
 	LOGF(INFO) << "accept [CONN@"
@@ -110,79 +149,11 @@ void CServer::onAccept(const boost::system::error_code& ec)
 	startAccept();
 }
 
-void CServer::closeSession(CSession::SelfType sess)
+void CServer::sessionClosed()
 {
-	if (sess->logined()) {
-		_guid_set.remove(sess->guid());
-		_session_db.del(sess->id());
-		_session_map.del(sess->id());
-		_session_map.del(sess->id());
-	}
-
 	_conn_num.sub(1);
-	LOGF(TRACE) << "server close connection [ID@" << sess->id() << "] {N:" << _conn_num << "}";
+	//LOGF(TRACE) << "server close connection [ID@" << sess->id() << "] {N:" << _conn_num << "}";
 }
 
-bool CServer::onLogin(CSession::SelfType sess)
-{
-	if (!_guid_set.insert(sess->guid())) {
-		LOGF(ERR) << "[guid: " << sess->guid() << "] insert failed.";
-		return false;
-	}
 
-	sess->id(allocSessionId());
-	if (!_session_map.set(sess->id(), sess)) {
-		LOGF(ERR) << "session id[: " << sess->id() << "] insert failed.";
-		_guid_set.remove(sess->guid());
-		return false;
-	}
 
-	SSessionInfo info(sess->id(), sess->remoteAddr());
-	_session_db.add(info);
-
-	return true;
-}
-
-CSession::SelfType CServer::getSession(CSession::SelfType sess, uint32_t id)
-{
-	CSession::SelfType ss = _session_map.get(id);
-	if (!ss) {
-		LOGF(DEBUG) << "session[" << sess->id() << "] get dest[" << id << " ] failed.";
-		return sess;
-	}
-	return ss;
-
-/*
-	boost::weak_ptr<CSession> wptr = _session_map.get(id);
-	if (wptr.expired()) {
-		LOGF(DEBUG) << "session[" << sess->id() << "] get dest[" << id << " ] failed.";
-		return sess;
-	}
-	CSession::SelfType ss = wptr.lock();
-	return ss;
-*/
-}
-
-CChannel::SelfType CServer::createChannel(CSession::SelfType src, CSession::SelfType dst)
-{
-	asio::ip::address addr = _acceptor.local_endpoint().address();
-	asio::ip::udp::endpoint src_ep(addr, 0);
-	asio::ip::udp::endpoint dst_ep(addr, 0);
-
-	CChannel::SelfType chann(new CChannel(
-			_io_context_pool.getIoContext(),
-			allocChannelId(),
-			src, dst,
-			src_ep, dst_ep,
-			gConfig->channDisplayTimeout()));
-
-	src->addSrcChannel(chann);
-	dst->addDstChannel(chann);
-
-	return chann;
-}
-
-boost::shared_ptr<std::string> CServer::getAllSessions(CSession::SelfType sess)
-{
-	return _session_db.output();
-}
