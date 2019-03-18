@@ -108,9 +108,9 @@ private:
 	boost::atomic<uint64_t> _down_packs;
 	boost::chrono::steady_clock::time_point _start_tp;
 
-	bool _src_opened;
-	bool _dst_opened;
-	boost::atomic<bool> _started;
+	mutable boost::atomic<bool> _src_opened;
+	mutable boost::atomic<bool> _dst_opened;
+	mutable boost::atomic<bool> _started;
 };
 
 

@@ -116,7 +116,6 @@ void CServer::closeSession(CSession::SelfType sess)
 		_guid_set.remove(sess->guid());
 		_session_db.del(sess->id());
 		_session_map.del(sess->id());
-		_session_map.del(sess->id());
 	}
 
 	_conn_num.sub(1);
