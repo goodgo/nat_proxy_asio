@@ -1,6 +1,6 @@
-﻿#include <boost/smart_ptr/shared_ptr.hpp>
+﻿#include "CLogger.hpp"
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/thread/thread.hpp>
 #include <boost/filesystem.hpp>
 
 #include <boost/log/core.hpp>
@@ -23,11 +23,7 @@
 #include <boost/log/sources/severity_feature.hpp>
 #include <boost/log/expressions/formatters.hpp>
 #include <boost/phoenix.hpp>
-#include <CLogger.hpp>
-#include <fstream>
-#include <string>
-
-
+#include "util.hpp"
 
 namespace logging = boost::log;
 namespace attrs = boost::log::attributes;
@@ -36,11 +32,9 @@ namespace sinks = boost::log::sinks;
 namespace expr = boost::log::expressions;
 namespace keywords = boost::log::keywords;
 
-/* Define place holder attributes */
 BOOST_LOG_ATTRIBUTE_KEYWORD(process_id, "ProcessID", attrs::current_process_id::value_type)
 BOOST_LOG_ATTRIBUTE_KEYWORD(thread_id, "ThreadID", attrs::current_thread_id::value_type)
 
-// Get Process native ID
 attrs::current_process_id::value_type::native_type get_native_process_id(
         logging::value_ref<attrs::current_process_id::value_type,
         tag::process_id> const& pid)
@@ -50,7 +44,6 @@ attrs::current_process_id::value_type::native_type get_native_process_id(
     return 0;
 }
 
-// Get Thread native ID
 attrs::current_thread_id::value_type::native_type get_native_thread_id(
         logging::value_ref<attrs::current_thread_id::value_type,
         tag::thread_id> const& tid)
@@ -65,7 +58,7 @@ template< typename CharT, typename TraitsT >
 inline std::basic_ostream< CharT, TraitsT >& operator<< (
   std::basic_ostream< CharT, TraitsT >& strm, LogLevel lvl)
 {
-	static const char* const str[] = {
+	static const char* const levels[] = {
 			"TRACE",
 			"DEBUG",
 			"INFO ",
@@ -74,8 +67,8 @@ inline std::basic_ostream< CharT, TraitsT >& operator<< (
 			"FATAL",
 			"REPORT"
 	};
-	if (static_cast<std::size_t>(lvl) < (sizeof(str) / sizeof(*str)))
-		strm << str[lvl] << "] [#" << gettid();
+	if (static_cast<std::size_t>(lvl) < (sizeof(levels) / sizeof(*levels)))
+		strm << levels[lvl] << "] [#" << gettid();
 	else
 		strm << static_cast<int>(lvl);
 	return strm;
@@ -90,10 +83,15 @@ void initLog(const std::string& proc_name, const std::string& path, size_t rotat
 
 	boost::shared_ptr<logging::core> core = logging::core::get();
 
+	std::stringstream logFileName;
+	logFileName << log_path.string() << "/"
+			<< proc_name << "_" << gettid()
+			<< "_%Y%m%d_%02N.log";
+
 	boost::shared_ptr<sinks::text_file_backend> file_backend =
 			boost::make_shared<sinks::text_file_backend>(
 				keywords::open_mode = std::ios::app,
-				keywords::file_name = log_path.string() + "/" + proc_name + "_%Y%m%d_%03N.log",
+				keywords::file_name = logFileName.str(),
 				keywords::rotation_size = rotation_size * 1024 * 1024,
 				keywords::time_based_rotation = sinks::file::rotation_at_time_point(7, 0, 0),
 				keywords::min_free_space = 30 * 1024 * 1024,

@@ -6,14 +6,15 @@
  */
 
 #include "CSessionDb.hpp"
-#include "CLogger.hpp"
-#include "util.hpp"
+#include <boost/make_shared.hpp>
+#include "util/CLogger.hpp"
+#include "util/util.hpp"
 
 CSessionDb::CSessionDb()
 : _thread()
-, _out_buff(new std::string(""))
+, _out_buff(boost::make_shared<std::string>(""))
 , _buff_len(0)
-, _started(true)
+, _started(false)
 {
 
 }
@@ -25,6 +26,7 @@ CSessionDb::~CSessionDb()
 
 void CSessionDb::start()
 {
+	_started = true;
 	_thread = boost::make_shared<boost::thread>(
 			boost::bind(&CSessionDb::worker, this));
 	_thread->detach();
@@ -35,18 +37,18 @@ void CSessionDb::stop()
 	if (_started) {
 		_started = false;
 		_op_cond.notify_all();
-		LOGF(TRACE) << "session db stop.";
+		LOG(INFO) << "session db stopped!";
 	}
 }
 
 void CSessionDb::worker()
 {
-	LOGF(TRACE) << "session db thread start.";
+	LOG(INFO) << "session db thread start.";
 	while(_started) {
 		operate();
 		serial();
 	}
-	LOGF(TRACE) << "session db thread exit.";
+	LOG(INFO) << "session db thread exit.";
 }
 
 void CSessionDb::operate()
@@ -61,12 +63,12 @@ void CSessionDb::operate()
 	const OperationItem& item = _op_stack.front();
 
 	switch(item.op)	{
-	case EN_ADD: {
+	case OPT::ADD: {
 		_db.insert(std::make_pair(item.info.uiId, item.info));
 		LOG(TRACE) << "session db add[" << item.info.uiId << "] size: " << _db.size();
 		break;
 	}
-	case EN_DEL: {
+	case OPT::DEL: {
 		_db.erase(item.info.uiId);
 		LOG(TRACE) << "session db del[" << item.info.uiId << "] size: " << _db.size();
 		break;
@@ -110,7 +112,7 @@ void CSessionDb::serial()
 void CSessionDb::add(const SSessionInfo& info)
 {
 	OperationItem item;
-	item.op = EN_ADD;
+	item.op = OPT::ADD;
 	item.info = info;
 	{
 		boost::mutex::scoped_lock lk(_op_mutex);
@@ -122,7 +124,7 @@ void CSessionDb::add(const SSessionInfo& info)
 void CSessionDb::del(uint32_t id)
 {
 	OperationItem item;
-	item.op = EN_DEL;
+	item.op = OPT::DEL;
 	item.info.uiId = id;
 	{
 		boost::mutex::scoped_lock lk(_op_mutex);

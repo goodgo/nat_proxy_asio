@@ -20,7 +20,7 @@ CPP_DEPS += \
 src/util/%.o: ../src/util/%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
-	g++ -DBOOST_COROUTINES_NO_DEPRECATION_WARNING -I../src -I../src/data -I../src/net -I../src/thread -I../src/util -I../src/openssl -I/usr/local/include/ -O0 -g -rdynamic -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	g++ -std=c++98 -DBOOST_COROUTINES_NO_DEPRECATION_WARNING -I../src -I/usr/local/include/ -O0 -g -rdynamic -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

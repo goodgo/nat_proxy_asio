@@ -8,44 +8,43 @@
 #ifndef SRC_NET_CSESSION_HPP_
 #define SRC_NET_CSESSION_HPP_
 
+#include <map>
+#include <deque>
+#include <string>
+#include <sstream>
+
 #include <boost/system/error_code.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
+#include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ip/udp.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/placeholders.hpp>
 
-#include <string>
-#include <deque>
-
 #include "CProtocol.hpp"
 #include "CChannel.hpp"
-#include "CSafeMap.hpp"
-#include "util.hpp"
+#include "util/CSafeMap.hpp"
+#include "util/util.hpp"
 
 namespace asio {
 	using namespace boost::asio;
 }
 
-class CServer;
+class CSessionMgr;
 
-const uint32_t DEFAULT_ID = ~0;
 
 class CSession : public boost::enable_shared_from_this<CSession>
 {
 public:
-	typedef boost::shared_ptr<CSession> SelfType;
-	typedef std::deque<StringPtr > MsgQue;
+	typedef std::deque<StringPtr> MsgQue;
 
-	CSession(CServer& server, asio::io_context& io_context, uint32_t timeout);
+	CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout);
 	~CSession();
 	void start();
 	void toStop();
@@ -64,29 +63,34 @@ public:
 	}
 	asio::ip::tcp::socket& socket() { return _socket; }
 
-	bool addSrcChannel(CChannel::SelfType chann);
-	bool addDstChannel(CChannel::SelfType chann);
+	bool addSrcChannel(const ChannelPtr& chann);
+	bool addDstChannel(const ChannelPtr& chann);
 
-	void closeSrcChannel(CChannel::SelfType chann);
-	void closeDstChannel(CChannel::SelfType chann);
+	void closeSrcChannel(const ChannelPtr& chann);
+	void closeDstChannel(const ChannelPtr& chann);
+
+	void onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, ChannelPtr& chann);
 
 private:
 	void onTimeout(const boost::system::error_code& ec);
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
+
 	bool checkHead();
 
-	void onLogin(boost::shared_ptr<CReqLoginPkg>& pkg);
-	void onAccelate(boost::shared_ptr<CReqAccelationPkg>& pkg);
-	void onGetSessions(boost::shared_ptr<CReqGetConsolesPkg>& pkg);
-	void onStopAccelate(CChannel::SelfType chann);
+	void onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req);
+	void onReqProxy(const boost::shared_ptr<CReqProxyPkt>& req);
+	void onRespProxyOk(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
+	void onRespProxyErr(const boost::shared_ptr<CReqProxyPkt>& req, uint8_t errcode);
+	void onReqGetProxies(const boost::shared_ptr<CReqGetProxiesPkt>& req);
+	void onRespStopProxy(uint32_t id, const asio::ip::udp::endpoint& ep);
 
 	void writeImpl(StringPtr msg);
 	void write();
 	void onWriteComplete(const boost::system::error_code& ec, const size_t bytes);
 
 private:
-	CServer& _server;
+	boost::shared_ptr<CSessionMgr> _mgr;
 	asio::io_context::strand _strand;
 	asio::ip::tcp::socket _socket;
 	asio::steady_timer _timer;
@@ -96,59 +100,15 @@ private:
 	CChannelMap 	_src_channels;
 	CChannelMap		_dst_channels;
 
-	SHeaderPkg		_header;
+	TagPktHdr		_hdr;
 	uint32_t		_timeout;
 	uint32_t 		_id;
 	uint32_t		_private_addr;
 	std::string		_guid;
+
 	bool 			_logined;
 	boost::atomic<bool>	_started;
 };
 
-///////////////////////////////////////////////////////////////////
-
-class CSessionMap
-{
-public:
-	typedef uint32_t SessionId;
-	typedef boost::weak_ptr<CSession> Value;
-	typedef boost::unordered_map<SessionId, Value> Map;
-	typedef Map::iterator Iterator;
-
-	CSessionMap() {}
-	~CSessionMap() {}
-
-	bool set(const SessionId& id, const CSession::SelfType& ss)
-	{
-		boost::mutex::scoped_lock lock(_mutex);
-		if (_map.find(id) != _map.end())
-			return false;
-
-		_map.insert(Map::value_type(id, ss));
-		return true;
-	}
-
-	CSession::SelfType get(const SessionId& id)
-	{
-		CSession::SelfType ss;
-		boost::mutex::scoped_lock lock(_mutex);
-		Iterator it = _map.find(id);
-		if (it == _map.end())
-			return ss;
-
-		ss = it->second.lock();
-		return ss;
-	}
-
-	void del(const SessionId& id)
-	{
-		boost::mutex::scoped_lock lock(_mutex);
-		_map.erase(id);
-	}
-
-private:
-	mutable boost::mutex _mutex;
-	Map _map;
-};
-
+typedef boost::shared_ptr<CSession> SessionPtr;
 #endif /* SRC_NET_CSESSION_HPP_ */

@@ -8,10 +8,9 @@
 #ifndef SRC_NET_CSESSIONDB_HPP_
 #define SRC_NET_CSESSIONDB_HPP_
 
-#include <map>
 #include <string>
-#include <sstream>
 #include <deque>
+#include <boost/unordered/unordered_map.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -20,11 +19,12 @@
 #include <boost/make_shared.hpp>
 #include "CProtocol.hpp"
 
-enum
-{
-	EN_ADD = 0,
-	EN_DEL = 1,
-};
+namespace OPT{
+	enum {
+		ADD = 0,
+		DEL = 1,
+	};
+}
 
 typedef struct
 {
@@ -35,7 +35,7 @@ typedef struct
 class CSessionDb
 {
 public:
-	typedef std::map<uint32_t, SSessionInfo> DbMap;
+	typedef boost::unordered_map<uint32_t, SSessionInfo> DbMap;
 	typedef std::deque<OperationItem> OperationStack;
 	typedef boost::shared_ptr<std::string> OutBuff;
 

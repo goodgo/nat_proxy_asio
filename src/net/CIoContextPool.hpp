@@ -8,15 +8,17 @@
 #ifndef SRC_NET_CIOCONTEXTPOOL_HPP_
 #define SRC_NET_CIOCONTEXTPOOL_HPP_
 
+#include <vector>
+#include <list>
+
+#include <boost/thread.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
+#include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/noncopyable.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/executor_work_guard.hpp>
-
-#include <vector>
-#include <list>
 
 namespace asio {
 	using namespace boost::asio;

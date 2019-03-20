@@ -10,7 +10,6 @@
 
 #include <string>
 #include <vector>
-#include <cstring>
 #include <sstream>
 #include <boost/cstdint.hpp>
 #include <boost/make_shared.hpp>
@@ -18,35 +17,77 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <boost/unordered/unordered_set.hpp>
 
-struct EN_HEAD {
-enum {H1 = 0xDD, H2 = 0x05};
-};
-
-struct EN_SVR_VERSION {
-enum { ENCRYP = 0x02, NOENCRYP = 0x04};
-};
-
-struct EN_FUNC {
-enum {
-	HEARTBEAT = 0x00,
-	LOGIN = 0x01,
-	ACCELATE = 0x02,
-	GET_CONSOLES = 0x03,
-	REQ_ACCESS = 0x04,
-	STOP_ACCELATE = 0x05
-}; };
-
+// 包头定义
 typedef struct
 {
-	uint8_t ucHead1;
-	uint8_t ucHead2;
-	uint8_t ucPrtVersion;
-	uint8_t ucSvrVersion;
-	uint8_t ucFunc;
-	uint8_t ucKeyIndex;
-	uint16_t usBodyLen;
-}SHeaderPkg;
+	uint8_t ucHead1;	// 包头标志1
+	uint8_t ucHead2;	// 包头标志2
+	uint8_t ucPrtVersion; // 协议版本
+	uint8_t ucSvrVersion; // 服务器版本
+	uint8_t ucFunc; 	// 功能号
+	uint8_t ucKeyIndex; // 密钥索引
+	uint16_t usBodyLen;	// 包体长度
+}TagPktHdr;
 
+// 包头标志
+namespace HEADER {
+	enum {
+		H1 = 0xDD,
+		H2 = 0x05
+	};
+}
+
+// 协议版本
+namespace PROTOVERSION {
+	enum {
+		V1 = 0x01,
+		V2 = 0x02
+	};
+}
+
+// 服务器版本
+namespace SVRVERSION {
+	enum {
+		NOENCRYP = 0x02, // 明文
+		ENCRYP = 0x04 // 加密
+	};
+}
+
+// 功能号
+namespace FUNC {
+	namespace REQ {
+		enum {
+			HEARTBEAT = 0x00,
+			LOGIN = 0x01,
+			PROXY = 0x02,
+			GETPROXIES = 0x03,
+		};
+	}
+
+	namespace RESP {
+		enum {
+			LOGIN = 0x01,
+			PROXY = 0x02,
+			GETPROXIES = 0x03,
+			ACCESS = 0x04,
+			STOPPROXY = 0x05
+		};
+	}
+}
+
+// 错误码
+namespace ERRCODE {
+	enum {
+		SUCCESS = 0x00,
+		REPEAT_LOGINED_ERR = 0X01,
+		LOGINED_FAILED = 0X02,
+		SVRVERSION_ERR = 0x03,
+		PARSE_ERR = 0x04,
+		CREATE_UDP_FAILED = 0x05,
+	};
+}
+
+// 数据库保存Session信息
 class SSessionInfo
 {
 public:
@@ -69,15 +110,16 @@ public:
 	uint32_t uiAddr;
 };
 
-class CReqPkgBase
+class CReqPktBase
 {
 public:
-	virtual ~CReqPkgBase() {};
+	virtual ~CReqPktBase() {};
 	virtual bool deserialize(const char* p, const size_t n) = 0;
-	SHeaderPkg header;
+	TagPktHdr header;
 };
 
-class CReqLoginPkg : public CReqPkgBase
+// 登陆请求包
+class CReqLoginPkt : public CReqPktBase
 {
 public:
 	virtual bool deserialize(const char* p, const size_t n);
@@ -87,8 +129,8 @@ public:
 	uint32_t uiPrivateAddr;
 };
 
-
-class CReqAccelationPkg : public CReqPkgBase
+// 代理请求包
+class CReqProxyPkt : public CReqPktBase
 {
 public:
 	virtual bool deserialize(const char* p, const size_t n);
@@ -99,7 +141,8 @@ public:
 	std::string szGameId;
 };
 
-class CReqGetConsolesPkg : public CReqPkgBase
+// 获取代理端请求包
+class CReqGetProxiesPkt : public CReqPktBase
 {
 public:
 	virtual bool deserialize(const char* p, const size_t n);
@@ -111,12 +154,12 @@ public:
 /////////////////////////////////////////////////////////////////
 typedef boost::shared_ptr<std::string> StringPtr;
 
-class CRespPkgBase
+class CRespPktBase
 {
 public:
-	CRespPkgBase() : ucErr(0) {}
-	virtual ~CRespPkgBase() {}
-	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head) = 0;
+	CRespPktBase() : ucErr(0) {}
+	virtual ~CRespPktBase() {}
+	virtual boost::shared_ptr<std::string> serialize(const TagPktHdr& head) = 0;
 	virtual void error(uint8_t err) { ucErr = err; }
 
 protected:
@@ -126,15 +169,16 @@ protected:
 	uint8_t ucErr;
 };
 
-class CRespLogin : public CRespPkgBase
+// 登陆应答包
+class CRespLogin : public CRespPktBase
 {
 public:
 	CRespLogin()
-	: CRespPkgBase()
+	: CRespPktBase()
 	, uiId(0)
 	{}
 	virtual ~CRespLogin(){}
-	virtual boost::shared_ptr<std::string> serialize(const SHeaderPkg& head);
+	virtual boost::shared_ptr<std::string> serialize(const TagPktHdr& head);
 
 	void id(uint32_t val) { uiId = val; }
 
@@ -149,17 +193,18 @@ private:
 	uint32_t uiId;
 };
 
-class CRespAccelate : public CRespPkgBase
+// 请求代理应答包
+class CRespProxy : public CRespPktBase
 {
 public:
-	CRespAccelate()
-	: CRespPkgBase()
+	CRespProxy()
+	: CRespPktBase()
 	, uiUdpId(0)
 	, uiUdpAddr(0)
 	, usUdpPort(0)
 	{}
-	virtual ~CRespAccelate(){}
-	virtual StringPtr serialize(const SHeaderPkg& head);
+	virtual ~CRespProxy(){}
+	virtual StringPtr serialize(const TagPktHdr& head);
 
 	void udpId(uint32_t val) { uiUdpId = val; }
 	void udpAddr(uint32_t val) { uiUdpAddr = val; }
@@ -181,11 +226,12 @@ private:
 	uint16_t usUdpPort;
 };
 
-class CRespAccess : public CRespPkgBase
+// 接入应答包
+class CRespAccess : public CRespPktBase
 {
 public:
 	CRespAccess()
-	: CRespPkgBase()
+	: CRespPktBase()
 	, uiSrcId(0)
 	, uiUdpId(0)
 	, uiUdpAddr(0)
@@ -193,7 +239,7 @@ public:
 	, uiPrivateAddr(0)
 	{}
 	virtual ~CRespAccess(){}
-	virtual StringPtr serialize(const SHeaderPkg& head);
+	virtual StringPtr serialize(const TagPktHdr& head);
 
 	void srcId(uint32_t val) { uiSrcId = val; }
 	void udpId(uint32_t val) { uiUdpId = val; }
@@ -220,12 +266,13 @@ private:
 	uint32_t uiPrivateAddr;
 };
 
-class CRespGetSessions : public CRespPkgBase
+// 请求获取代理端应答包
+class CRespGetProxies : public CRespPktBase
 {
 public:
-	CRespGetSessions(): CRespPkgBase(){}
-	virtual ~CRespGetSessions(){}
-	virtual StringPtr serialize(const SHeaderPkg& head);
+	CRespGetProxies(): CRespPktBase(){}
+	virtual ~CRespGetProxies(){}
+	virtual StringPtr serialize(const TagPktHdr& head);
 
 private:
 	uint16_t size() const{
@@ -236,17 +283,18 @@ public:
 	StringPtr sessions;
 };
 
-class CRespStopAccelate : public CRespPkgBase
+// 停止代理应答包
+class CRespStopProxy : public CRespPktBase
 {
 public:
-	CRespStopAccelate()
-	: CRespPkgBase()
+	CRespStopProxy()
+	: CRespPktBase()
 	, uiUdpId(0)
 	, uiUdpAddr(0)
 	, usUdpPort(0)
 	{}
-	virtual ~CRespStopAccelate(){}
-	virtual StringPtr serialize(const SHeaderPkg& head);
+	virtual ~CRespStopProxy(){}
+	virtual StringPtr serialize(const TagPktHdr& head);
 
 	void udpId(uint32_t val) { uiUdpId = val; }
 	void udpAddr(uint32_t val) { uiUdpAddr = val; }

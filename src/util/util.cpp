@@ -6,11 +6,17 @@
  */
 
 #include "util.hpp"
+#include <fstream>
+extern "C"
+{
+#include <stdlib.h>
+#include <stdio.h>
 #include <sys/param.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <iostream>
+#include <execinfo.h>
+}
 
 namespace util {
 	bool daemon()
@@ -26,13 +32,13 @@ namespace util {
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	std::cerr << "fork() failed." << std::endl;
+	    	//std::cerr << "fork() failed." << std::endl;
 	        return false;
 	    }
 
 	    int ret = setsid();
 	    if (ret < 0) {
-	    	std::cerr << "setsid() failed." << std::endl;
+	    	//std::cerr << "setsid() failed." << std::endl;
 	        return false;
 	    }
 
@@ -40,7 +46,7 @@ namespace util {
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	std::cerr << "fork() failed." << std::endl;
+	    	//std::cerr << "fork() failed." << std::endl;
 	        return false;
 	    }
 
@@ -49,7 +55,7 @@ namespace util {
 
 	    ret = chdir("/");
 	    if (ret < 0) {
-	    	std::cerr << "chdir(\"/\") failed." << std::endl;
+	    	//std::cerr << "chdir(\"/\") failed." << std::endl;
 	        return false;
 	    }
 
@@ -69,8 +75,42 @@ namespace util {
 		else if (bytes >= KB)
 			sprintf(buff, "%.2f KB", (double)bytes / KB);
 		else
-			sprintf(buff, "%llu B", bytes);
+			sprintf(buff, "%lu B", bytes);
 
 		return buff;
+	}
+
+	void printBacktrace(int sig)
+	{
+		std::stringstream filename;
+		filename << "/tmp/nat_proxy_asio_" << gettid() << ".coredump";
+
+		std::ofstream outfile;
+		outfile.open(filename.str().c_str());
+
+		if (!outfile.is_open())
+			return;
+
+		const int SIZE  = 100;
+	    void *buffer[100];
+
+	    int nptrs = backtrace(buffer, SIZE);
+	    outfile << "backtrace() returned " << nptrs << " addresses\n";
+
+	    char **strings = backtrace_symbols(buffer, nptrs);
+	    if (strings == NULL) {
+	    	outfile << "backtrace_symbols\n";
+	    	outfile.close();
+	    	exit(EXIT_FAILURE);
+	    }
+
+	    for (int j = 0; j < nptrs; j++) {
+	    	outfile << "#" << j << " >> " << strings[j] << "\n";
+	    	std::cout << strings[j] << std::endl;
+	    }
+
+	    free(strings);
+	    outfile.close();
+	    /**/
 	}
 }

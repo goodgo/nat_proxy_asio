@@ -40,33 +40,31 @@ class CChannel : public boost::enable_shared_from_this<CChannel>
 				, public boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr<CChannel> SelfType;
-
 	CChannel(asio::io_context& io,
 			uint32_t id,
-			boost::shared_ptr<CSession> src_session,
-			boost::shared_ptr<CSession> dst_session,
-			asio::ip::udp::endpoint& src_ep,
-			asio::ip::udp::endpoint& dst_ep,
+			uint32_t rbuff_size = 1500,
+			uint32_t sbuff_size = 1500,
 			uint32_t display_timeout = 60);
 	~CChannel();
 
+	bool init(const boost::shared_ptr<CSession>& src_ss,
+			const boost::shared_ptr<CSession>& dst_ss);
 	void start();
 	void toStop();
 	void stop();
 
-	asio::ip::udp::socket& srcSocket() { return _src_socket; }
-	asio::ip::udp::socket& dstSocket() { return _dst_socket; }
-
+	uint32_t id() { return _id; }
 	asio::ip::udp::socket::endpoint_type srcEndpoint() {
-		return _src_socket.local_endpoint();
+		return _src_end._local_ep;
 	}
 
 	asio::ip::udp::socket::endpoint_type dstEndpoint() {
-		return _dst_socket.local_endpoint();
+		return _dst_end._local_ep;
 	}
 
-	uint32_t id() { return _id; }
+	boost::weak_ptr<CSession>& getDstSession() {
+		return _dst_end.session();
+	}
 
 private:
 	void uploader(asio::yield_context yield);
@@ -75,51 +73,55 @@ private:
 	bool doAuth(const char* buf, const size_t bytes);
 
 private:
-	asio::io_context& _io_context;
+	//////////////////////////////////////////////////////////////
+	class CEnd
+	{
+	public:
+		CEnd(asio::io_context& io, uint32_t rbuff_size, uint32_t sbuff_size);
+		~CEnd();
+		bool init(boost::shared_ptr<CSession> ss);
+		void stop();
+		bool opened() { return _opened; }
+		uint16_t localPort() { return _local_ep.port(); }
+		asio::ip::udp::socket::endpoint_type remote() { return _remote_ep; }
+		uint32_t sessionId() { return _owner_id; }
+		boost::weak_ptr<CSession>& session() { return _owner_ss; }
 
-	asio::io_context::strand _src_strand;
-	asio::io_context::strand _dst_strand;
-	asio::steady_timer _display_timer;
-
-	asio::ip::udp::endpoint _src_local_ep;
-	asio::ip::udp::endpoint _dst_local_ep;
-
-	asio::ip::udp::endpoint _src_remote_ep;
-	asio::ip::udp::endpoint _dst_remote_ep;
-
-	asio::ip::udp::socket _src_socket;
-	asio::ip::udp::socket _dst_socket;
-
-	boost::weak_ptr<CSession> _src_session;
-	boost::weak_ptr<CSession> _dst_session;
-
-	enum { BUFFSIZE = 2048 };
-	char _src_buf[BUFFSIZE];
-	char _dst_buf[BUFFSIZE];
-
+	public:
+		asio::io_context::strand _strand;
+		asio::ip::udp::socket _socket;
+		asio::ip::udp::endpoint _local_ep;
+		asio::ip::udp::endpoint _remote_ep;
+		boost::weak_ptr<CSession> _owner_ss;
+		uint32_t _owner_id;
+		std::vector<char> _buf;
+		bool _opened;
+	};
+	//////////////////////////////////////////////////////////////
 	uint32_t _id;
-	uint32_t _src_id;
-	uint32_t _dst_id;
+	CEnd _src_end;
+	CEnd _dst_end;
 
+	asio::io_context::strand _strand;
+	asio::steady_timer _display_timer;
 	uint32_t _display_timeout;
 	boost::atomic<uint64_t> _up_bytes;
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;
 	boost::atomic<uint64_t> _down_packs;
 	boost::chrono::steady_clock::time_point _start_tp;
-
-	mutable boost::atomic<bool> _src_opened;
-	mutable boost::atomic<bool> _dst_opened;
-	mutable boost::atomic<bool> _started;
+	boost::atomic<bool> _started;
 };
+
+typedef boost::shared_ptr<CChannel> ChannelPtr;
 
 
 class CChannelMap
 {
 public:
 	typedef uint32_t	ChannelId;
-	typedef boost::weak_ptr<CChannel> Value;
-	typedef boost::unordered_map<ChannelId, Value> Map;
+	typedef boost::weak_ptr<CChannel> CChannelWptr;
+	typedef boost::unordered_map<ChannelId, CChannelWptr> Map;
 	typedef Map::value_type ValueType;
 	typedef Map::iterator Iterator;
 
@@ -128,7 +130,7 @@ public:
 		return _map.size();
 	}
 
-	bool insert(const ChannelId& id, CChannel::SelfType& value) {
+	bool insert(const ChannelId& id, const ChannelPtr& value) {
 		boost::mutex::scoped_lock lk(_mutex);
 		if (_map.end() != _map.find(id))
 			return false;
@@ -158,7 +160,10 @@ public:
 	void stopAll() {
 		boost::mutex::scoped_lock lk(_mutex);
 		for (Iterator it = _map.begin(); it != _map.end();) {
-			//it->second->toStop();
+			CChannelWptr& value = it->second;
+			ChannelPtr chann = value.lock();
+			if (chann)
+				chann->toStop();
 			it = _map.erase(it);
 		}
 	}
