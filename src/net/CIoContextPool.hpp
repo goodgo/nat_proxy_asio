@@ -11,6 +11,7 @@
 #include <vector>
 #include <list>
 
+#include <boost/thread.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>

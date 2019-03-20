@@ -14,11 +14,10 @@
 int main(int argc, char* argv[])
 {
 	if (!gConfig->init(argc, argv)) {
-		std::cout << "config parse error!" << std::endl;
 		return 0;
 	}
 
- 	signal(SIGINT, SIG_IGN);
+ 	//signal(SIGINT, SIG_IGN);
 	signal(SIGHUP, SIG_IGN);
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);

@@ -48,8 +48,8 @@ namespace PROTOVERSION {
 // 服务器版本
 namespace SVRVERSION {
 	enum {
-		ENCRYP = 0x02, // 加密
-		NOENCRYP = 0x04 // 明文
+		NOENCRYP = 0x02, // 明文
+		ENCRYP = 0x04 // 加密
 	};
 }
 

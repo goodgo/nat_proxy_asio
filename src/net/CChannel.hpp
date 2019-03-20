@@ -55,11 +55,15 @@ public:
 
 	uint32_t id() { return _id; }
 	asio::ip::udp::socket::endpoint_type srcEndpoint() {
-		return _src_socket.local_endpoint();
+		return _src_end._local_ep;
 	}
 
 	asio::ip::udp::socket::endpoint_type dstEndpoint() {
-		return _dst_socket.local_endpoint();
+		return _dst_end._local_ep;
+	}
+
+	boost::weak_ptr<CSession>& getDstSession() {
+		return _dst_end.session();
 	}
 
 private:
@@ -75,8 +79,7 @@ private:
 	public:
 		CEnd(asio::io_context& io, uint32_t rbuff_size, uint32_t sbuff_size);
 		~CEnd();
-		bool init(SessionPtr ss);
-		void toStop();
+		bool init(boost::shared_ptr<CSession> ss);
 		void stop();
 		bool opened() { return _opened; }
 		uint16_t localPort() { return _local_ep.port(); }
@@ -84,7 +87,7 @@ private:
 		uint32_t sessionId() { return _owner_id; }
 		boost::weak_ptr<CSession>& session() { return _owner_ss; }
 
-	protected:
+	public:
 		asio::io_context::strand _strand;
 		asio::ip::udp::socket _socket;
 		asio::ip::udp::endpoint _local_ep;
@@ -95,13 +98,13 @@ private:
 		bool _opened;
 	};
 	//////////////////////////////////////////////////////////////
+	uint32_t _id;
 	CEnd _src_end;
 	CEnd _dst_end;
 
-	uint32_t _id;
-	uint32_t _display_timeout;
 	asio::io_context::strand _strand;
 	asio::steady_timer _display_timer;
+	uint32_t _display_timeout;
 	boost::atomic<uint64_t> _up_bytes;
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;

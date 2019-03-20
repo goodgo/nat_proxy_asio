@@ -56,6 +56,8 @@ void CServer::stop()
 				<< "(D)"
 #endif
 				<< "> ******************";
+
+		exit(0);
 	}
 }
 
