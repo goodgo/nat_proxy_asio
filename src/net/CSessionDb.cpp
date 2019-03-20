@@ -6,14 +6,15 @@
  */
 
 #include "CSessionDb.hpp"
+#include <boost/make_shared.hpp>
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
 CSessionDb::CSessionDb()
 : _thread()
-, _out_buff(new std::string(""))
+, _out_buff(boost::make_shared<std::string>(""))
 , _buff_len(0)
-, _started(true)
+, _started(false)
 {
 
 }
@@ -25,6 +26,7 @@ CSessionDb::~CSessionDb()
 
 void CSessionDb::start()
 {
+	_started = true;
 	_thread = boost::make_shared<boost::thread>(
 			boost::bind(&CSessionDb::worker, this));
 	_thread->detach();
@@ -35,18 +37,18 @@ void CSessionDb::stop()
 	if (_started) {
 		_started = false;
 		_op_cond.notify_all();
-		LOGF(TRACE) << "session db stop.";
+		LOG(INFO) << "session db stopped!";
 	}
 }
 
 void CSessionDb::worker()
 {
-	LOGF(TRACE) << "session db thread start.";
+	LOG(INFO) << "session db thread start.";
 	while(_started) {
 		operate();
 		serial();
 	}
-	LOGF(TRACE) << "session db thread exit.";
+	LOG(INFO) << "session db thread exit.";
 }
 
 void CSessionDb::operate()

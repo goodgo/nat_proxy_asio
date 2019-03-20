@@ -7,6 +7,7 @@
 
 #include "CServer.hpp"
 #include <boost/bind.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/asio/io_context.hpp>
@@ -20,7 +21,7 @@ CServer::CServer(uint32_t pool_size)
 , _acceptor(_io_context_pool.getIoContext())
 , _session_ptr()
 , _conn_num(0)
-, _started(true)
+, _started(false)
 {
 
 }
@@ -76,7 +77,7 @@ bool CServer::init()
 			asio::ip::address::from_string(gConfig->srvAddr()),
 			gConfig->listenPort());
 	_acceptor.open(ep.protocol(), ec);
-	if (ec || !_acceptor.is_open()) {
+	if (ec) {
 		LOG(ERR) << "server open accept failed: " << ec.message();
 		return false;
 	}
@@ -89,8 +90,14 @@ bool CServer::init()
 	}
 
 	_acceptor.listen();
-	_session_mgr = boost::make_shared<CSessionMgr>(*this);
+	_started = true;
+	_session_mgr = boost::make_shared<CSessionMgr>(boost::ref(*this));
 	return true;
+}
+
+asio::io_context& CServer::getContext()
+{
+	return _io_context_pool.getIoContext();
 }
 
 bool CServer::start()
@@ -115,15 +122,22 @@ bool CServer::start()
 
 	_session_mgr->start();
 	startAccept();
-	_io_context_pool.run();// block
+	_io_context_pool.run();// block here
 	return true;
 }
 
 void CServer::startAccept()
 {
+	_conn_num.fetch_add(1);
 	_session_ptr.reset(new CSession(_session_mgr,
-			_io_context_pool.getIoContext(),
-			gConfig->loginTimeout()));
+			boost::ref(_io_context_pool.getIoContext()),
+			gConfig->loginTimeout()),
+			boost::bind(&CServer::sessionClosed, this));
+
+	if (!_acceptor.is_open()) {
+		LOGF(FATAL) << "acceptor closed!";
+		return;
+	}
 
 	_acceptor.async_accept(
 			_session_ptr->socket(),
@@ -139,7 +153,6 @@ void CServer::onAccept(const boost::system::error_code& ec)
 		return;
 	}
 
-	_conn_num.fetch_add(1);
 
 	LOGF(INFO) << "accept [CONN@"
 			<< _session_ptr->socket().remote_endpoint()
@@ -153,6 +166,7 @@ void CServer::sessionClosed()
 {
 	_conn_num.sub(1);
 	//LOGF(TRACE) << "server close connection [ID@" << sess->id() << "] {N:" << _conn_num << "}";
+	LOGF(TRACE) << "server close connection! {N:" << _conn_num << "}";
 }
 
 

@@ -15,41 +15,29 @@
 
 CChannel::CChannel(asio::io_context& io,
 		uint32_t id,
-		boost::shared_ptr<CSession> src_session,
-		boost::shared_ptr<CSession> dst_session,
-		asio::ip::udp::endpoint& src_ep,
-		asio::ip::udp::endpoint& dst_ep,
 		uint32_t rbuff_size,
 		uint32_t sbuff_size,
 		uint32_t display_timeout)
-: _io_context(io)
-, _src_strand(io)
+: _src_strand(io)
 , _dst_strand(io)
 , _display_timer(io)
-, _src_socket(io, src_ep)
-, _dst_socket(io, dst_ep)
-, _src_session(src_session)
-, _dst_session(dst_session)
+, _src_socket(io, asio::ip::udp::v4())
+, _dst_socket(io, asio::ip::udp::v4())
 , _src_buf(rbuff_size)
 , _dst_buf(rbuff_size)
 , _id(id)
-, _src_id(src_session->id())
-, _dst_id(dst_session->id())
+, _src_id(0)
+, _dst_id(0)
 , _display_timeout(display_timeout)
 , _up_bytes(0)
 , _up_packs(0)
 , _down_bytes(0)
 , _down_packs(0)
 , _start_tp(boost::chrono::steady_clock::now())
-
 , _src_opened(false)
 , _dst_opened(false)
-, _started(true)
+, _started(false)
 {
-	_src_local_ep = _src_socket.local_endpoint();
-	_dst_local_ep = _dst_socket.local_endpoint();
-	_src_remote_ep = asio::ip::udp::endpoint(src_session->socket().remote_endpoint().address(), 0);
-	_dst_remote_ep = asio::ip::udp::endpoint(dst_session->socket().remote_endpoint().address(), 0);
 	_src_socket.set_option(asio::ip::udp::socket::reuse_address(true));
 	_src_socket.set_option(asio::ip::udp::socket::send_buffer_size(sbuff_size));
 	_src_socket.set_option(asio::ip::udp::socket::receive_buffer_size(rbuff_size));
@@ -65,10 +53,52 @@ CChannel::~CChannel()
 	LOGF(TRACE) << "channel[" << _id << "].";
 }
 
+bool CChannel::init(const SessionPtr& src_ss, const SessionPtr& dst_ss)
+{
+	if (!src_ss->addSrcChannel(shared_from_this())) {
+		LOG(ERR) << "channel[" << _id << "] add to source session[" << src_ss->id() << "] failed!";
+		return false;
+	}
+
+	if (!dst_ss->addDstChannel(shared_from_this())) {
+		src_ss->closeSrcChannel(shared_from_this());
+		LOG(ERR) << "channel[" << _id << "] add to destination session[" << dst_ss->id() << "] failed!";
+		return false;
+	}
+
+	boost::system::error_code ec;
+	_src_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0), ec);
+	if (ec) {
+		LOG(ERR) << "channel[" << _id << "] src socket bind error: " << ec.message();
+		return false;
+	}
+	_dst_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0), ec);
+	if (ec) {
+		LOG(ERR) << "channel[" << _id << "] dst socket bind error: " << ec.message();
+		return false;
+	}
+
+	_src_local_ep = _src_socket.local_endpoint();
+	_dst_local_ep = _dst_socket.local_endpoint();
+
+	_src_ss = src_ss;
+	_dst_ss = dst_ss;
+
+	_src_id = src_ss->id();
+	_dst_id = dst_ss->id();
+
+	_src_remote_ep = asio::ip::udp::endpoint(src_ss->socket().remote_endpoint().address(), 0);
+	_dst_remote_ep = asio::ip::udp::endpoint(dst_ss->socket().remote_endpoint().address(), 0);
+
+	return true;
+}
+
 void CChannel::toStop()
 {
-	_io_context.post(
-			_src_strand.wrap(boost::bind(&CChannel::stop, shared_from_this()))
+	_src_strand.get_io_context().post(
+			_src_strand.wrap(
+					boost::bind(&CChannel::stop, shared_from_this())
+			)
 	);
 	LOGF(TRACE) << "channel[" << _id << "] ("<< _src_id
 			<< ") --> (" << _dst_id << ") will be stopped.";
@@ -79,50 +109,25 @@ void CChannel::stop()
 	if (_started) {
 		_started = false;
 
+		SessionPtr ss = _src_ss.lock();
+		if (ss) {
+			ss->closeSrcChannel(shared_from_this());
+		}
+
+		ss = _dst_ss.lock();
+		if (ss) {
+			ss->closeDstChannel(shared_from_this());
+		}
+
 		boost::system::error_code ec;
-		_display_timer.cancel(ec);
-		if (ec)
-			LOGF(ERR) << "channel[" << _id << "] ("<< _src_id
-					<< ") --> (" << _dst_id << ") cancel display timer failed: " << ec;
-
-		_src_socket.shutdown(asio::ip::udp::socket::shutdown_both, ec);
-		if (ec)
-			LOGF(ERR) << "channel[" << _id << "] ("<< _src_id
-					<< ") --> (" << _dst_id << ") shutdown source socket failed: " << ec;
-
 		_src_socket.cancel(ec);
-		if (ec)
-			LOGF(ERR) << "channel[" << _id << "] ("<< _src_id
-					<< ") --> (" << _dst_id << ") cancel source socket failed: " << ec;
-
-		_dst_socket.shutdown(asio::ip::udp::socket::shutdown_both, ec);
-		if (ec)
-			LOGF(ERR) << "channel[" << _id << "] ("<< _src_id
-					<< ") --> (" << _dst_id << ") cancel destination socket failed: " << ec;
-
 		_dst_socket.cancel(ec);
-		if (ec)
-			LOGF(ERR) << "channel[" << _id << "] ("<< _src_id
-					<< ") --> (" << _dst_id << ") cancel destination socket failed: " << ec;
-
-		if (!_src_session.expired()) {
-			CSession::SelfType s = _src_session.lock();
-			if (s->isRuning()) {
-				s->closeSrcChannel(shared_from_this());
-			}
-		}
-
-		if (!_dst_session.expired()) {
-			CSession::SelfType s = _dst_session.lock();
-			if (s->isRuning()) {
-				s->closeDstChannel(shared_from_this());
-			}
-		}
+		_display_timer.cancel(ec);
 
 		boost::chrono::duration<double> sec =
 				boost::chrono::steady_clock::now() - _start_tp;
 
-		LOG(INFO) << "channel[" << _id << "] closed. takes time: "
+		LOG(INFO) << "channel[" << _id << "] closed. takes time: " << std::setprecision(3)
 				<< (static_cast<uint32_t>(sec.count()))%(24*3600)/3600.0 << " h"
 				<< " | TX packets(" << _up_packs << "): " << util::formatBytes(_up_bytes)
 				<< " | RX packets(" << _down_packs << "):" << util::formatBytes(_down_bytes);
@@ -131,19 +136,23 @@ void CChannel::stop()
 
 void CChannel::start()
 {
-	LOG(TRACE) << "channel[" << _id << "] ("<< _src_id
-			<< ")["    << _src_remote_ep
-			<< " --> " << _src_socket.local_endpoint().port()
-			<< " --> " << _dst_socket.local_endpoint().port()
-			<< " --> " << _dst_remote_ep
-			<< "]("    << _dst_id << ") opened.";
+	if (!_started) {
+		_started = true;
 
-	asio::spawn(_src_strand, boost::bind(
-			&CChannel::uploader, shared_from_this(), boost::placeholders::_1));
-	asio::spawn(_dst_strand, boost::bind(
-			&CChannel::downloader, shared_from_this(), boost::placeholders::_1));
-	asio::spawn(_dst_strand, boost::bind(
-			&CChannel::displayer, shared_from_this(), boost::placeholders::_1));
+		LOG(TRACE) << "channel[" << _id << "] ("<< _src_id
+				<< ")["    << _src_remote_ep
+				<< " --> " << _src_socket.local_endpoint().port()
+				<< " --> " << _dst_socket.local_endpoint().port()
+				<< " --> " << _dst_remote_ep
+				<< "]("    << _dst_id << ") opened.";
+
+		asio::spawn(_src_strand, boost::bind(
+				&CChannel::uploader, shared_from_this(), boost::placeholders::_1));
+		asio::spawn(_dst_strand, boost::bind(
+				&CChannel::downloader, shared_from_this(), boost::placeholders::_1));
+		asio::spawn(_dst_strand, boost::bind(
+				&CChannel::displayer, shared_from_this(), boost::placeholders::_1));
+	}
 }
 
 

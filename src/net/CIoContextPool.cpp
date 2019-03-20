@@ -7,8 +7,9 @@
 #include "CIoContextPool.hpp"
 #include <boost/thread/thread.hpp>
 #include <boost/bind.hpp>
-#include <iostream>
+#include <boost/ref.hpp>
 #include "util/CLogger.hpp"
+#include "util/util.hpp"
 
 CIoContextPool::CIoContextPool(size_t pool_size)
 : _next_context_index(0)
@@ -35,12 +36,13 @@ void CIoContextPool::run()
 {
 	std::vector<boost::shared_ptr<boost::thread> > threads;
 	for (size_t i = 0; i < _io_contexts.size(); i++) {
-		boost::shared_ptr<boost::thread> t(
-				new boost::thread(
+		boost::shared_ptr<boost::thread> t = boost::make_shared<boost::thread>(
 						boost::bind(
 								&CIoContextPool::startThread,
 								this,
-								_io_contexts[i])));
+								boost::ref(_io_contexts[i])
+						)
+		);
 		threads.push_back(t);
 	}
 
@@ -59,6 +61,8 @@ void CIoContextPool::startThread(io_context_ptr& io)
 			break;
 		}catch(const std::exception& e) {
 			LOGF(FATAL) << "context catch exception: " << e.what();
+			util::printBacktrace(0);
+			break;
 		}
 	}
 	LOG(INFO) << "context thread exit.";
@@ -79,6 +83,7 @@ void CIoContextPool::stop()
 			_io_contexts[i]->stop();
 		}
 		_io_contexts.clear();
+		LOG(INFO) << "context pool stopped.";
 	}
 }
 

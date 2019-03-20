@@ -22,6 +22,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ip/udp.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/placeholders.hpp>
@@ -41,8 +42,7 @@ class CSessionMgr;
 class CSession : public boost::enable_shared_from_this<CSession>
 {
 public:
-	typedef boost::shared_ptr<CSession> SelfType;
-	typedef std::deque<StringPtr > MsgQue;
+	typedef std::deque<StringPtr> MsgQue;
 
 	CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout);
 	~CSession();
@@ -63,11 +63,13 @@ public:
 	}
 	asio::ip::tcp::socket& socket() { return _socket; }
 
-	bool addSrcChannel(CChannel::SelfType chann);
-	bool addDstChannel(CChannel::SelfType chann);
+	bool addSrcChannel(const ChannelPtr& chann);
+	bool addDstChannel(const ChannelPtr& chann);
 
-	void closeSrcChannel(CChannel::SelfType chann);
-	void closeDstChannel(CChannel::SelfType chann);
+	void closeSrcChannel(const ChannelPtr& chann);
+	void closeDstChannel(const ChannelPtr& chann);
+
+	void onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, ChannelPtr& chann);
 
 private:
 	void onTimeout(const boost::system::error_code& ec);
@@ -76,10 +78,12 @@ private:
 
 	bool checkHead();
 
-	void onReqLogin(boost::shared_ptr<CReqLoginPkt>& pkg);
-	void onReqProxy(boost::shared_ptr<CReqProxyPkt>& pkg);
-	void onReqGetProxies(boost::shared_ptr<CReqGetProxiesPkt>& pkg);
-	void onRespStopProxy(CChannel::SelfType chann);
+	void onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req);
+	void onReqProxy(const boost::shared_ptr<CReqProxyPkt>& req);
+	void onRespProxyOk(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
+	void onRespProxyErr(const boost::shared_ptr<CReqProxyPkt>& req, uint8_t errcode);
+	void onReqGetProxies(const boost::shared_ptr<CReqGetProxiesPkt>& req);
+	void onRespStopProxy(uint32_t id, const asio::ip::udp::endpoint& ep);
 
 	void writeImpl(StringPtr msg);
 	void write();
@@ -106,4 +110,5 @@ private:
 	boost::atomic<bool>	_started;
 };
 
+typedef boost::shared_ptr<CSession> SessionPtr;
 #endif /* SRC_NET_CSESSION_HPP_ */

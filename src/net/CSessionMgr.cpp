@@ -6,70 +6,72 @@
  */
 
 #include "CSessionMgr.hpp"
+#include <boost/make_shared.hpp>
+#include "CServer.hpp"
 #include "util/CLogger.hpp"
+#include "util/CConfig.hpp"
 
 CSessionMgr::CSessionMgr(CServer& server)
 : _server(server)
 , _session_id(1000)
-, _channel_id(0)
+, _channel_id(1)
 {
-	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::HEARTBEAT,	"HEARTB"));
-	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::LOGIN,		"LOGIN"));
-	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::PROXY,		"PROXY"));
-	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::GETPROXIES, "GETPROXIES"));
-	_func_name_map.insert(std::make_pair((uint32_t)FUNC::RESP::ACCESS, 	"ACCESS"));
-	_func_name_map.insert(std::make_pair((uint32_t)FUNC::RESP::STOPPROXY, "STOPPROXY"));
+	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::HEARTBEAT,"HEARTB"));
+	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::LOGIN,	"LOGIN"));
+	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::PROXY,	"PROXY"));
+	_func_name_map.insert(std::make_pair((uint32_t)FUNC::REQ::GETPROXIES,"GETPROXIES"));
+	_func_name_map.insert(std::make_pair((uint32_t)FUNC::RESP::ACCESS, 	 "ACCESS"));
+	_func_name_map.insert(std::make_pair((uint32_t)FUNC::RESP::STOPPROXY,"STOPPROXY"));
 }
 
 CSessionMgr::~CSessionMgr()
 {
+	stop();
 }
 
 bool CSessionMgr::start()
 {
-	_session_db.start();
-}
-
-bool CSessionMgr::addSession(const SessionId& id, const CSession::SelfType& ss)
-{
-	boost::mutex::scoped_lock lock(_session_mutex);
-	if (_session_map.find(id) != _session_map.end())
-		return false;
-
-	_session_map.insert(SessionMap::value_type(id, ss));
+	_ss_db.start();
 	return true;
 }
 
-CSession::SelfType CSessionMgr::getSession(const SessionId& id)
+bool CSessionMgr::stop()
 {
-	CSession::SelfType ss;
-	boost::mutex::scoped_lock lock(_session_mutex);
-	Iterator it = _session_map.find(id);
-	if (it == _session_map.end())
-		return ss;
-
-	ss = it->second.lock();
-	return ss;
+	_ss_db.stop();
+	return true;
 }
 
-void CSessionMgr::delSession(const SessionId& id)
+bool CSessionMgr::addSessionWithLock(const SessionId& id, const SessionPtr& ss)
 {
-	boost::mutex::scoped_lock lock(_session_mutex);
-	_session_map.erase(id);
+	boost::mutex::scoped_lock lock(_ss_mutex);
+	if (_ss_map.find(id) != _ss_map.end())
+		return false;
+
+	_ss_map.insert(SessionMap::value_type(id, ss));
+	return true;
 }
 
-void CSessionMgr::closeSession(CSession::SelfType ss)
+SessionPtr CSessionMgr::getSessionWithLock(const SessionId& id)
+{
+	boost::mutex::scoped_lock lock(_ss_mutex);
+	Iterator it = _ss_map.find(id);
+	if (it == _ss_map.end())
+		return SessionPtr();
+	return it->second.lock();
+}
+
+void CSessionMgr::closeSessionWithLock(const SessionPtr& ss)
 {
 	if (ss->logined()) {
 		_guid_set.remove(ss->guid());
-		_session_db.del(ss->id());
-		delSession(ss->id());
-	}
+		_ss_db.del(ss->id());
 
-	_server.sessionClosed();
+		boost::mutex::scoped_lock lock(_ss_mutex);
+		_ss_map.erase(ss->id());
+	}
 }
 
-bool CSessionMgr::onSessionLogin(CSession::SelfType ss)
+bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 {
 	if (!_guid_set.insert(ss->guid())) {
 		LOGF(ERR) << "[guid: " << ss->guid() << "] insert failed.";
@@ -77,49 +79,43 @@ bool CSessionMgr::onSessionLogin(CSession::SelfType ss)
 	}
 
 	ss->id(allocSessionId());
-	if (!addSession(ss->id(), ss)) {
+	if (!addSessionWithLock(ss->id(), ss)) {
 		LOGF(ERR) << "session id[: " << ss->id() << "] insert failed.";
 		_guid_set.remove(ss->guid());
 		return false;
 	}
 
 	SSessionInfo info(ss->id(), ss->remoteAddr());
-	_session_db.add(info);
+	_ss_db.add(info);
 
 	return true;
 }
 
-boost::shared_ptr<std::string> CSessionMgr::getAllSessions(CSession::SelfType sess)
+boost::shared_ptr<std::string> CSessionMgr::getAllSessions()
 {
-	return _session_db.output();
+	return _ss_db.output();
 }
 
-CChannel::SelfType CSessionMgr::createChannel(CSession::SelfType src_ss, const SessionId& id)
+ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId& dst_id)
 {
-	CSession::SelfType dst_ss = getSession(id);
+	SessionPtr dst_ss = getSessionWithLock(dst_id);
 	if (!dst_ss) {
-		LOGF(ERR) << "session[" << sess->id() << "] get dest[" << id << " ] failed.";
-		return sess;
+		LOGF(ERR) << "session[" << src_ss->id() << "] get dest[" << dst_id << "] failed.";
+		return ChannelPtr();
 	}
-	return ss;
 
-	asio::ip::address addr = _acceptor.local_endpoint().address();
-	asio::ip::udp::endpoint src_ep(addr, 0);
-	asio::ip::udp::endpoint dst_ep(addr, 0);
-
-	CChannel::SelfType chann(new CChannel(
-			_io_context_pool.getIoContext(),
+	ChannelPtr chann = boost::make_shared<CChannel> (
+			boost::ref(_server.getContext()),
 			allocChannelId(),
-			src, dst,
-			src_ep, dst_ep,
 			gConfig->channReceiveBuffSize(),
 			gConfig->channSendBuffSize(),
-			gConfig->channDisplayTimeout()));
+			gConfig->channDisplayTimeout()
+	);
 
-	src->addSrcChannel(chann);
-	dst->addDstChannel(chann);
-
+	if (!chann->init(src_ss, dst_ss)) {
+		chann->stop();
+		LOG(ERR) << "channel init failed!";
+		return ChannelPtr();
+	}
 	return chann;
 }
-
-

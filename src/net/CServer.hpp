@@ -42,6 +42,7 @@ public:
 	void stop();
 	void sessionClosed();
 	void signalHandle(const boost::system::error_code& ec, int sig);
+	asio::io_context& getContext();
 
 private:
 	void startAccept();
@@ -51,7 +52,7 @@ private:
 	CIoContextPool _io_context_pool;
 	asio::signal_set _signal_sets;
 	asio::ip::tcp::acceptor _acceptor;
-	CSession::SelfType _session_ptr;
+	SessionPtr _session_ptr;
 	boost::shared_ptr<CSessionMgr> _session_mgr;
 
 	boost::atomic<uint32_t> _conn_num;

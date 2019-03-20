@@ -40,19 +40,15 @@ class CChannel : public boost::enable_shared_from_this<CChannel>
 				, public boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr<CChannel> SelfType;
-
 	CChannel(asio::io_context& io,
 			uint32_t id,
-			boost::shared_ptr<CSession> src_session,
-			boost::shared_ptr<CSession> dst_session,
-			asio::ip::udp::endpoint& src_ep,
-			asio::ip::udp::endpoint& dst_ep,
 			uint32_t rbuff_size = 1500,
 			uint32_t sbuff_size = 1500,
 			uint32_t display_timeout = 60);
 	~CChannel();
 
+	bool init(const boost::shared_ptr<CSession>& src_ss,
+			const boost::shared_ptr<CSession>& dst_ss);
 	void start();
 	void toStop();
 	void stop();
@@ -68,6 +64,10 @@ public:
 		return _dst_socket.local_endpoint();
 	}
 
+	boost::weak_ptr<CSession>& getDstSession() {
+		return _dst_ss;
+	}
+
 	uint32_t id() { return _id; }
 
 private:
@@ -77,8 +77,6 @@ private:
 	bool doAuth(const char* buf, const size_t bytes);
 
 private:
-	asio::io_context& _io_context;
-
 	asio::io_context::strand _src_strand;
 	asio::io_context::strand _dst_strand;
 	asio::steady_timer _display_timer;
@@ -92,8 +90,8 @@ private:
 	asio::ip::udp::socket _src_socket;
 	asio::ip::udp::socket _dst_socket;
 
-	boost::weak_ptr<CSession> _src_session;
-	boost::weak_ptr<CSession> _dst_session;
+	boost::weak_ptr<CSession> _src_ss;
+	boost::weak_ptr<CSession> _dst_ss;
 
 	std::vector<char> _src_buf;
 	std::vector<char> _dst_buf;
@@ -114,13 +112,15 @@ private:
 	boost::atomic<bool> _started;
 };
 
+typedef boost::shared_ptr<CChannel> ChannelPtr;
+
 
 class CChannelMap
 {
 public:
 	typedef uint32_t	ChannelId;
-	typedef boost::weak_ptr<CChannel> Value;
-	typedef boost::unordered_map<ChannelId, Value> Map;
+	typedef boost::weak_ptr<CChannel> CChannelWptr;
+	typedef boost::unordered_map<ChannelId, CChannelWptr> Map;
 	typedef Map::value_type ValueType;
 	typedef Map::iterator Iterator;
 
@@ -129,7 +129,7 @@ public:
 		return _map.size();
 	}
 
-	bool insert(const ChannelId& id, CChannel::SelfType& value) {
+	bool insert(const ChannelId& id, const ChannelPtr& value) {
 		boost::mutex::scoped_lock lk(_mutex);
 		if (_map.end() != _map.find(id))
 			return false;
@@ -159,8 +159,8 @@ public:
 	void stopAll() {
 		boost::mutex::scoped_lock lk(_mutex);
 		for (Iterator it = _map.begin(); it != _map.end();) {
-			Value& value = it->second;
-			CChannel::SelfType chann = value.lock();
+			CChannelWptr& value = it->second;
+			ChannelPtr chann = value.lock();
 			if (chann)
 				chann->toStop();
 			it = _map.erase(it);

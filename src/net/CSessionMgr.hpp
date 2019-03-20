@@ -1,3 +1,7 @@
+#ifndef SRC_NET_CSESSIONMGR_HPP_
+#define SRC_NET_CSESSIONMGR_HPP_
+
+#include <boost/noncopyable.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/unordered/unordered_map.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>
@@ -5,16 +9,20 @@
 #include <sstream>
 #include <string>
 
+#include "CSession.hpp"
+#include "CChannel.hpp"
 #include "CSessionDb.hpp"
+#include "util/CSafeSet.hpp"
 
 const uint32_t DEFAULT_ID = ~0;
 
-class CSessionMgr
+class CServer;
+class CSessionMgr : private boost::noncopyable
 {
 public:
 	typedef uint32_t SessionId;
-	typedef boost::weak_ptr<CSession> Value;
-	typedef boost::unordered_map<SessionId, Value> SessionMap;
+	typedef boost::weak_ptr<CSession> SessionWptr;
+	typedef boost::unordered_map<SessionId, SessionWptr> SessionMap;
 	typedef SessionMap::iterator Iterator;
 	typedef std::map<uint32_t, std::string> FuncNameMap;
 
@@ -24,15 +32,13 @@ public:
 	bool init();
 	bool start();
 	bool stop();
-	bool addSession(const SessionId& id, const CSession::SelfType& ss);
-	CSession::SelfType getSession(const SessionId& id);
-	void delSession(const SessionId& id);
+	bool addSessionWithLock(const SessionId& id, const SessionPtr& ss);
+	SessionPtr getSessionWithLock(const SessionId& id);
+	void closeSessionWithLock(const SessionPtr& ss);
 
-	CChannel::SelfType createChannel(CSession::SelfType src, const SessionId& id);
-	CSession::SelfType getSession(CSession::SelfType sess, uint32_t id);
-	boost::shared_ptr<std::string> getAllSessions(CSession::SelfType sess);
-	bool onSessionLogin(CSession::SelfType ss);
-	void closeSession(CSession::SelfType ss);
+	ChannelPtr createChannel(const SessionPtr& src_ss, const SessionId& dst_id);
+	boost::shared_ptr<std::string> getAllSessions();
+	bool onSessionLogin(const SessionPtr& ss);
 	std::string getFuncName(uint8_t func)
 	{
 		FuncNameMap::const_iterator it = _func_name_map.find(func);
@@ -50,13 +56,15 @@ private:
 
 private:
 	CServer& _server;
-	mutable boost::mutex _session_mutex;
-	SessionMap _session_map;
+	mutable boost::mutex _ss_mutex;
+	SessionMap _ss_map;
+	CSessionDb _ss_db;
 
 	std::map<uint32_t, std::string> _func_name_map;
 	CSafeSet<std::string> _guid_set;
-	CSessionDb _session_db;
 
 	boost::atomic<uint32_t> _session_id;
 	boost::atomic<uint32_t> _channel_id;
 };
+
+#endif
