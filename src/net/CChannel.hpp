@@ -53,9 +53,7 @@ public:
 	void toStop();
 	void stop();
 
-	asio::ip::udp::socket& srcSocket() { return _src_socket; }
-	asio::ip::udp::socket& dstSocket() { return _dst_socket; }
-
+	uint32_t id() { return _id; }
 	asio::ip::udp::socket::endpoint_type srcEndpoint() {
 		return _src_socket.local_endpoint();
 	}
@@ -64,12 +62,6 @@ public:
 		return _dst_socket.local_endpoint();
 	}
 
-	boost::weak_ptr<CSession>& getDstSession() {
-		return _dst_ss;
-	}
-
-	uint32_t id() { return _id; }
-
 private:
 	void uploader(asio::yield_context yield);
 	void downloader(asio::yield_context yield);
@@ -77,38 +69,45 @@ private:
 	bool doAuth(const char* buf, const size_t bytes);
 
 private:
-	asio::io_context::strand _src_strand;
-	asio::io_context::strand _dst_strand;
-	asio::steady_timer _display_timer;
+	//////////////////////////////////////////////////////////////
+	class CEnd
+	{
+	public:
+		CEnd(asio::io_context& io, uint32_t rbuff_size, uint32_t sbuff_size);
+		~CEnd();
+		bool init(SessionPtr ss);
+		void toStop();
+		void stop();
+		bool opened() { return _opened; }
+		uint16_t localPort() { return _local_ep.port(); }
+		asio::ip::udp::socket::endpoint_type remote() { return _remote_ep; }
+		uint32_t sessionId() { return _owner_id; }
+		boost::weak_ptr<CSession>& session() { return _owner_ss; }
 
-	asio::ip::udp::endpoint _src_local_ep;
-	asio::ip::udp::endpoint _dst_local_ep;
-
-	asio::ip::udp::endpoint _src_remote_ep;
-	asio::ip::udp::endpoint _dst_remote_ep;
-
-	asio::ip::udp::socket _src_socket;
-	asio::ip::udp::socket _dst_socket;
-
-	boost::weak_ptr<CSession> _src_ss;
-	boost::weak_ptr<CSession> _dst_ss;
-
-	std::vector<char> _src_buf;
-	std::vector<char> _dst_buf;
+	protected:
+		asio::io_context::strand _strand;
+		asio::ip::udp::socket _socket;
+		asio::ip::udp::endpoint _local_ep;
+		asio::ip::udp::endpoint _remote_ep;
+		boost::weak_ptr<CSession> _owner_ss;
+		uint32_t _owner_id;
+		std::vector<char> _buf;
+		bool _opened;
+	};
+	//////////////////////////////////////////////////////////////
+	CEnd _src_end;
+	CEnd _dst_end;
 
 	uint32_t _id;
-	uint32_t _src_id;
-	uint32_t _dst_id;
-
 	uint32_t _display_timeout;
+	asio::io_context::strand _strand;
+	asio::steady_timer _display_timer;
 	boost::atomic<uint64_t> _up_bytes;
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;
 	boost::atomic<uint64_t> _down_packs;
 	boost::chrono::steady_clock::time_point _start_tp;
 
-	bool _src_opened;
-	bool _dst_opened;
 	boost::atomic<bool> _started;
 };
 
