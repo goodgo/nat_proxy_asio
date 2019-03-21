@@ -121,7 +121,13 @@ protected:
 		}
 
 		if (vm.count("version")) {
-			std::cout << "version: " << BUILD_VERSION << std::endl;
+			std::cout << "version: " << BUILD_VERSION
+#if !defined(NDEBUG)
+			<< "(Debug)"
+#else
+			<< "(Release)"
+#endif
+					<< std::endl;
 			return false;
 		}
 

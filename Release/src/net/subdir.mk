@@ -9,7 +9,8 @@ CPP_SRCS += \
 ../src/net/CProtocol.cpp \
 ../src/net/CServer.cpp \
 ../src/net/CSession.cpp \
-../src/net/CSessionDb.cpp 
+../src/net/CSessionDb.cpp \
+../src/net/CSessionMgr.cpp 
 
 OBJS += \
 ./src/net/CChannel.o \
@@ -17,7 +18,8 @@ OBJS += \
 ./src/net/CProtocol.o \
 ./src/net/CServer.o \
 ./src/net/CSession.o \
-./src/net/CSessionDb.o 
+./src/net/CSessionDb.o \
+./src/net/CSessionMgr.o 
 
 CPP_DEPS += \
 ./src/net/CChannel.d \
@@ -25,7 +27,8 @@ CPP_DEPS += \
 ./src/net/CProtocol.d \
 ./src/net/CServer.d \
 ./src/net/CSession.d \
-./src/net/CSessionDb.d 
+./src/net/CSessionDb.d \
+./src/net/CSessionMgr.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
