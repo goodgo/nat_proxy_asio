@@ -9,6 +9,7 @@
 #define SRC_NET_CCHANNEL_HPP_
 
 #include <string>
+#include <algorithm>
 
 #include <boost/noncopyable.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>
@@ -86,6 +87,7 @@ private:
 		asio::ip::udp::socket::endpoint_type remote() { return _remote_ep; }
 		uint32_t sessionId() { return _owner_id; }
 		boost::weak_ptr<CSession>& session() { return _owner_ss; }
+		void zeroBuf() { std::fill(_buf.begin(), _buf.end(), 0); }
 
 	public:
 		asio::io_context::strand _strand;

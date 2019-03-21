@@ -205,7 +205,7 @@ void CChannel::uploader(asio::yield_context yield)
 		if (doAuth(_src_end._buf.data(), bytes) && _dst_end.opened())
 			_src_end._opened = true;
 		else
-			_src_end._buf.clear();
+			_src_end.zeroBuf();
 
 		LOG(INFO) << "channel[" << _id << "] "
 				<< "("		<< _src_end.sessionId()
@@ -223,7 +223,7 @@ void CChannel::uploader(asio::yield_context yield)
 					<< ")["		<< _src_end.remote()
 					<< " <-- "	<< _src_end.localPort()
 					<< "]("		<< _dst_end.sessionId()
-					<< ") src echo auth[" << bytes << " B] error: " << ec.message();
+					<< ") src echo auth[" << bytes << "B] error: " << ec.message();
 			continue;
 		}
 	}
@@ -304,7 +304,7 @@ void CChannel::downloader(asio::yield_context yield)
 		if (doAuth(_dst_end._buf.data(), bytes))
 			_dst_end._opened = true;
 		else
-			_dst_end._buf.clear();
+			_dst_end.zeroBuf();
 
 		LOG(INFO) << "channel[" << _id << "] "
 				<< "("		<< _src_end.sessionId()
