@@ -52,15 +52,12 @@ public:
 	bool isRuning() { return _started; }
 
 	void doRead();
-	void doWrite(StringPtr msg);
+	void doWrite(const StringPtr& msg);
 
 	std::string& guid() { return _guid; }
 	bool logined() { return _logined; }
 	void id(uint32_t id) { _id = id; }
 	uint32_t id() { return _id; }
-	uint32_t remoteAddr() {
-		return _socket.remote_endpoint().address().to_v4().to_uint();
-	}
 	asio::ip::tcp::socket& socket() { return _socket; }
 
 	bool addSrcChannel(const ChannelPtr& chann);
@@ -75,7 +72,6 @@ private:
 	void onTimeout(const boost::system::error_code& ec);
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
-
 	bool checkHead();
 
 	void onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req);
@@ -85,7 +81,7 @@ private:
 	void onReqGetProxies(const boost::shared_ptr<CReqGetProxiesPkt>& req);
 	void onRespStopProxy(uint32_t id, const asio::ip::udp::endpoint& ep);
 
-	void writeImpl(StringPtr msg);
+	void writeImpl(const StringPtr& msg);
 	void write();
 	void onWriteComplete(const boost::system::error_code& ec, const size_t bytes);
 
@@ -94,8 +90,8 @@ private:
 	asio::io_context::strand _strand;
 	asio::ip::tcp::socket _socket;
 	asio::steady_timer _timer;
-	asio::streambuf _read_buf;
-	MsgQue 			_send_que;
+	asio::streambuf _rbuf;
+	MsgQue 			_sque;
 
 	CChannelMap 	_src_channels;
 	CChannelMap		_dst_channels;

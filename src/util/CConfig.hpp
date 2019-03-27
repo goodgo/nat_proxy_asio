@@ -17,6 +17,10 @@
 #include <boost/program_options.hpp>
 #include "version.h"
 
+extern "C" {
+#include <ifaddrs.h>
+}
+
 class CConfig
 {
 public:
@@ -135,6 +139,45 @@ protected:
 			_cfg_file += _proc_name + ".cfg";
 
 		return true;
+	}
+
+	void readnet(){
+		struct ifaddrs * ifAddrStruct = NULL, *tmp = NULL;
+		void * tmpAddrPtr = NULL;
+		if(0 != getifaddrs(&ifAddrStruct)){
+			return ;
+		}
+		char addressBuffer[INET_ADDRSTRLEN];
+		tmp = ifAddrStruct;
+		int count = 0;
+		while (ifAddrStruct != NULL)
+		{
+			if(ifAddrStruct->ifa_addr)
+			{
+				if (ifAddrStruct->ifa_addr->sa_family == AF_INET // check it is IP4
+							&& strcmp(ifAddrStruct->ifa_name, "lo") != 0){
+							bzero(addressBuffer,sizeof(char)*INET_ADDRSTRLEN);
+							tmpAddrPtr = &((struct sockaddr_in *)ifAddrStruct->ifa_addr)->sin_addr;
+							inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+
+							std::cout << "=========================================" << std::endl;
+							std::cout << "name: " << ifAddrStruct->ifa_name << std::endl;
+							std::cout << "family: " << ifAddrStruct->ifa_addr->sa_family << std::endl;
+							std::cout << "addr: " << addressBuffer << std::endl;
+							std::cout << "flags: " << ifAddrStruct->ifa_flags << std::endl;
+							std::cout << "=================" << std::endl;
+						}
+			}
+			ifAddrStruct = ifAddrStruct->ifa_next;
+		}
+		if(tmp)
+		{
+			freeifaddrs(tmp);
+		}
+		if (count > 0)
+			return ;
+		return ;
+
 	}
 
 	CConfig()

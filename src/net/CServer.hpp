@@ -40,7 +40,7 @@ public:
 	bool init();
 	bool start();
 	void stop();
-	void sessionClosed();
+	void sessionClosed(const SessionPtr& ss);
 	void signalHandle(const boost::system::error_code& ec, int sig);
 	asio::io_context& getContext();
 

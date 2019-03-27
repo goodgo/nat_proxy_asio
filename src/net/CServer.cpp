@@ -43,9 +43,9 @@ void CServer::stop()
 	if (_started) {
 		_started = false;
 
-		boost::system::error_code ec;
-		_acceptor.cancel(ec);
-		_signal_sets.cancel(ec);
+		boost::system::error_code ignored_ec;
+		_acceptor.cancel(ignored_ec);
+		_signal_sets.cancel(ignored_ec);
 		_session_ptr.reset();
 		_session_mgr->stop();
 		_io_context_pool.stop();
@@ -130,14 +130,12 @@ bool CServer::start()
 
 void CServer::startAccept()
 {
-	_conn_num.fetch_add(1);
 	_session_ptr.reset(new CSession(_session_mgr,
 			boost::ref(_io_context_pool.getIoContext()),
-			gConfig->loginTimeout()),
-			boost::bind(&CServer::sessionClosed, this));
+			gConfig->loginTimeout()));
 
 	if (!_acceptor.is_open()) {
-		LOGF(FATAL) << "acceptor closed!";
+		LOGF(FATAL) << "acceptor has been closed!";
 		return;
 	}
 
@@ -155,21 +153,26 @@ void CServer::onAccept(const boost::system::error_code& ec)
 		return;
 	}
 
+	if (!_session_ptr) {
+		LOGF(ERR) << "accept error: session point exception!";
+		return;
+	}
 
-	LOGF(INFO) << "accept [CONN@"
-			<< _session_ptr->socket().remote_endpoint()
-			<< "] {N:" << _conn_num << "}";
+	boost::system::error_code ec2;
+	asio::ip::tcp::endpoint ep = _session_ptr->socket().remote_endpoint(ec2);
+	if (ec2) {
+		LOGF(ERR) << "accept error: " << ec2;
+		return;
+	}
 
+	_conn_num.fetch_add(1);
+	LOGF(INFO) << "accept [CONN@" << ep << "] {N:" << _conn_num << "}";
 	_session_ptr->start();
 	startAccept();
 }
 
-void CServer::sessionClosed()
+void CServer::sessionClosed(const SessionPtr& ss)
 {
 	_conn_num.sub(1);
-	//LOGF(TRACE) << "server close connection [ID@" << sess->id() << "] {N:" << _conn_num << "}";
-	LOGF(TRACE) << "server close connection! {N:" << _conn_num << "}";
+	LOGF(TRACE) << "server close connection [ID@" << ss->id() << "] {N:" << _conn_num << "}";
 }
-
-
-

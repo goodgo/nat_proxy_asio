@@ -36,15 +36,14 @@ CSession::~CSession()
 
 void CSession::stop()
 {
-	boost::system::error_code ec;
-	_timer.cancel(ec);
-	_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
-	_socket.close(ec);
+	boost::system::error_code ignored_ec;
+	_timer.cancel(ignored_ec);
+	_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
+	_socket.close(ignored_ec);
 
 	if (_started)
 	{
 		_started = false;
-		_mgr->closeSessionWithLock(shared_from_this());
 
 		if (_src_channels.size() > 0)
 			_src_channels.stopAll();
@@ -52,13 +51,13 @@ void CSession::stop()
 		if (_dst_channels.size() > 0)
 			_dst_channels.stopAll();
 
+		_mgr->closeSessionWithLock(shared_from_this());
 		LOGF(DEBUG) << "session[" << _id << "] stopped.";
 	}
 }
 
 void CSession::start()
 {
-	LOGF(DEBUG) << "session[" << _id << "] start.";
 	if (!_started) {
 		_started = true;
 		_timer.expires_from_now(boost::chrono::seconds(_timeout));
@@ -74,7 +73,6 @@ void CSession::start()
 
 void CSession::onTimeout(const boost::system::error_code& ec)
 {
-	LOG(TRACE) << "session[" << _id << "] timeout: " << ec.message();
 	if (!ec)
 		stop();
 }
@@ -85,7 +83,7 @@ void CSession::doRead()
 	{
 		asio::async_read(
 			_socket,
-			_read_buf,
+			_rbuf,
 			asio::transfer_exactly(sizeof(TagPktHdr)),
 			_strand.wrap(
 					boost::bind(
@@ -97,7 +95,7 @@ void CSession::doRead()
 	}
 }
 
-void CSession::doWrite(StringPtr msg)
+void CSession::doWrite(const StringPtr& msg)
 {
 	if (msg->length() <= 0)
 		return;
@@ -112,7 +110,7 @@ void CSession::doWrite(StringPtr msg)
 
 void CSession::onReadHead(const boost::system::error_code& ec, const size_t bytes)
 {
-	if (ec) {
+	if (ec || 0 == bytes) {
 		LOG(ERR) << "session[" << _id << "] read head error: " << ec.message();
 		stop();
 		return;
@@ -125,7 +123,7 @@ void CSession::onReadHead(const boost::system::error_code& ec, const size_t byte
 
 	asio::async_read(
 		_socket,
-		_read_buf,
+		_rbuf,
 		asio::transfer_exactly(_hdr.usBodyLen),
 		_strand.wrap(
 				boost::bind(
@@ -138,17 +136,17 @@ void CSession::onReadHead(const boost::system::error_code& ec, const size_t byte
 
 void CSession::onReadBody(const boost::system::error_code& ec, const size_t bytes)
 {
-	if (ec) {
+	if (ec || 0 == bytes) {
 		LOGF(ERR) << "session[" << _id << "] read body error: " << ec.message();;
 		stop();
 		return;
 	}
 
-	const char* pbuf = asio::buffer_cast<const char*>(_read_buf.data());
-	const size_t nmax = _read_buf.size();
+	const char* pbuf = asio::buffer_cast<const char*>(_rbuf.data());
+	const size_t nmax = _rbuf.size();
 
-	LOG(TRACE) << "session[" << _id << "] read(#REQ_" << _mgr->getFuncName(_hdr.ucFunc)
-			<< "#): " << util::to_hex(pbuf, sizeof(_hdr) + _hdr.usBodyLen);
+	LOG(TRACE) << "session[" << _id << "] read(#REQ_" << _mgr->getFuncName(_hdr.ucFunc) << "#): "
+			<< util::to_hex(pbuf, sizeof(_hdr) + _hdr.usBodyLen);
 
 	switch (_hdr.ucFunc) {
 	case FUNC::REQ::HEARTBEAT:
@@ -172,16 +170,16 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 		break;
 	}
 
-	_read_buf.consume(sizeof(_hdr) + _hdr.usBodyLen);
+	_rbuf.consume(sizeof(_hdr) + _hdr.usBodyLen);
 	doRead();
 }
 
-void CSession::writeImpl(StringPtr msg)
+void CSession::writeImpl(const StringPtr& msg)
 {
-	_send_que.push_back(msg);
-	if (_send_que.size() > 1)
+	_sque.push_back(msg);
+	if (_sque.size() > 1)
 	{
-		LOGF(TRACE) << "session[" << _id << "] queue size: " << _send_que.size() << "return.";
+		LOGF(TRACE) << "session[" << _id << "] queue size: " << _sque.size() << "return.";
 		return;
 	}
 	write();
@@ -189,7 +187,7 @@ void CSession::writeImpl(StringPtr msg)
 
 void CSession::write()
 {
-	StringPtr& msg = _send_que[0];
+	const StringPtr& msg = _sque[0];
 	asio::async_write(
 			_socket,
 			asio::buffer(msg->c_str(), msg->length()),
@@ -206,27 +204,24 @@ void CSession::write()
 
 void CSession::onWriteComplete(const boost::system::error_code& ec, const size_t bytes)
 {
-	StringPtr msg = _send_que[0];
-	LOG(TRACE) << "session[" << _id << "] write(#RESP_" << _mgr->getFuncName((*msg)[4])
-			<< "#): " << util::to_hex(*msg);
+	StringPtr msg = _sque[0];
+	LOG(TRACE) << "session[" << _id << "] write(#RESP_" << _mgr->getFuncName((*msg)[4]) << "#): "
+			<< util::to_hex(*msg);
 
-	_send_que.pop_front();
+	_sque.pop_front();
 	if (ec) {
 		LOGF(ERR) << "session[" << _id << "] write failed(" << bytes << "B): [" << util::to_hex(*msg)
 				<< "] [error: " << ec.message() << "]";
 		return;
 	}
 
-	if (!_send_que.empty()) {
+	if (!_sque.empty())
 		write();
-	}
-	else
-		LOGF(TRACE) << "session[" << _id << "] write queue empty.";
 }
 
 bool CSession::checkHead()
 {
-	const char* pbuf = asio::buffer_cast<const char*>(_read_buf.data());
+	const char* pbuf = asio::buffer_cast<const char*>(_rbuf.data());
 	memcpy(&_hdr, pbuf, sizeof(TagPktHdr));
 
 	if ((_hdr.ucHead1 == HEADER::H1 &&
@@ -243,7 +238,7 @@ bool CSession::checkHead()
 			<< " | 0x" << (int)_hdr.ucSvrVersion;
 
 	bzero(&_hdr, sizeof(TagPktHdr));
-	_read_buf.consume(sizeof(TagPktHdr));
+	_rbuf.consume(sizeof(TagPktHdr));
 	return false;
 }
 
@@ -261,8 +256,8 @@ void CSession::onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req)
 			resp.id(_id);
 			LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login success.";
 
-			boost::system::error_code ec;
-			_timer.cancel(ec);
+			boost::system::error_code ignored_ec;
+			_timer.cancel(ignored_ec);
 		}
 		else {
 			resp.error(ERRCODE::LOGINED_FAILED);

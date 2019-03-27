@@ -135,8 +135,8 @@ void CChannel::stop()
 		_src_end.stop();
 		_dst_end.stop();
 
-		boost::system::error_code ec;
-		_display_timer.cancel(ec);
+		boost::system::error_code ignored_ec;
+		_display_timer.cancel(ignored_ec);
 
 		boost::chrono::duration<double> sec =
 				boost::chrono::steady_clock::now() - _start_tp;

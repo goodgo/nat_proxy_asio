@@ -69,6 +69,7 @@ void CSessionMgr::closeSessionWithLock(const SessionPtr& ss)
 		boost::mutex::scoped_lock lock(_ss_mutex);
 		_ss_map.erase(ss->id());
 	}
+	_server.sessionClosed(ss);
 }
 
 bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
@@ -85,9 +86,15 @@ bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 		return false;
 	}
 
-	SSessionInfo info(ss->id(), ss->remoteAddr());
-	_ss_db.add(info);
+	boost::system::error_code ec;
+	asio::ip::tcp::endpoint ep = ss->socket().remote_endpoint(ec);
+	if (ec) {
+		LOGF(ERR) << "accept error: " << ec;
+		return false;
+	}
 
+	SSessionInfo info(ss->id(), ep.address().to_v4().to_uint());
+	_ss_db.add(info);
 	return true;
 }
 
