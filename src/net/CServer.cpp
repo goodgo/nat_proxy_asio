@@ -93,7 +93,7 @@ bool CServer::init()
 
 	_acceptor.listen();
 	_started = true;
-	_session_mgr = boost::make_shared<CSessionMgr>(boost::ref(*this));
+	_session_mgr.reset(new CSessionMgr(boost::ref(*this)));
 	return true;
 }
 

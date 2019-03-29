@@ -38,7 +38,6 @@ namespace asio {
 
 class CSessionMgr;
 
-
 class CSession : public boost::enable_shared_from_this<CSession>
 {
 public:

@@ -13,6 +13,7 @@
 
 CSessionMgr::CSessionMgr(CServer& server)
 : _server(server)
+, _ss_db(boost::ref(server.getContext()))
 , _session_id(1000)
 , _channel_id(1)
 {
@@ -32,6 +33,7 @@ CSessionMgr::~CSessionMgr()
 bool CSessionMgr::start()
 {
 	_ss_db.start();
+
 	return true;
 }
 
@@ -93,8 +95,9 @@ bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 		return false;
 	}
 
-	SSessionInfo info(ss->id(), ep.address().to_v4().to_uint());
+	SSessionInfo info(ss->id(), ep.address().to_v4().to_uint(), ss->guid());
 	_ss_db.add(info);
+
 	return true;
 }
 
@@ -126,3 +129,4 @@ ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId&
 	}
 	return chann;
 }
+

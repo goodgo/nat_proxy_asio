@@ -53,7 +53,7 @@ private:
 	asio::signal_set _signal_sets;
 	asio::ip::tcp::acceptor _acceptor;
 	SessionPtr _session_ptr;
-	boost::shared_ptr<CSessionMgr> _session_mgr;
+	SessionMgrPtr _session_mgr;
 
 	boost::atomic<uint32_t> _conn_num;
 	bool _started;

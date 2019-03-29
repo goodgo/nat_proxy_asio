@@ -18,6 +18,7 @@
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include "CProtocol.hpp"
+#include "redisclient/redisasyncclient.h"
 
 namespace OPT{
 	enum {
@@ -32,6 +33,19 @@ typedef struct
 	SSessionInfo info;
 }OperationItem;
 
+const std::string kRedisKeySession = "SESSION:";
+const std::string kRedisFieldSessionId = "ID";
+const std::string kRedisFieldSessionAddr = "ADDR";
+const std::string kRedisFieldSessionGuid = "GUID";
+
+const std::string kRedisSET = "SET";
+const std::string kRedisGET = "GET";
+const std::string kRedisLPUSH = "LPUSH";
+const std::string kRedisRPUSH = "RPUSH";
+const std::string kRedisHMSET = "HMSET";
+const std::string kRedisHMGET = "HMGET";
+const std::string kRedisHDEL = "HDEL";
+
 class CSessionDb
 {
 public:
@@ -39,20 +53,25 @@ public:
 	typedef std::deque<OperationItem> OperationStack;
 	typedef boost::shared_ptr<std::string> OutBuff;
 
-	CSessionDb();
+	CSessionDb(boost::asio::io_context& io_context);
 	~CSessionDb();
 	void stop();
 	void start();
 	void worker();
 	void add(const SSessionInfo& info);
+	void onSetHandle(bool ok, const std::string& errmsg);
 	void del(uint32_t id);
 	OutBuff output();
 
 private:
 	void operate();
 	void serial();
+	void onRedisConnected(bool ok, const std::string& errmsg);
+	void onRedisSetSessionCompleted(uint32_t id, const RedisValue &result);
+	void onRedisDelSessionCompleted(uint32_t id, const RedisValue &result);
 
 public:
+	RedisAsyncClient _redis;
 	boost::shared_ptr<boost::thread> _thread;
 	DbMap _db;
 	boost::mutex _op_mutex;
