@@ -39,8 +39,8 @@ int main(int argc, char* argv[])
 				gConfig->logPath(),
 				gConfig->logFileSize(),
 				gConfig->logLevel());
-		CServer server(gConfig->workerNum());
-		if (!server.start()) {
+		ServerPtr server(boost::make_shared<CServer>(gConfig->workerNum()));
+		if (!server->start()) {
 			LOGF(ERR) << "server start failed!";
 			return 0;
 		}

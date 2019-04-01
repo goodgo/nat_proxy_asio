@@ -46,6 +46,7 @@ public:
 
 	CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout);
 	~CSession();
+	static boost::shared_ptr<CSession> newSession();
 	void start();
 	void toStop();
 	void stop();

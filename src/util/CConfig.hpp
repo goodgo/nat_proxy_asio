@@ -45,6 +45,8 @@ public:
 			_srv_addr = _cfg.get<std::string>("srv.addr", "0.0.0.0");
 			_listen_port = _cfg.get<uint16_t>("srv.listen_port", 10001);
 			_worker_num = _cfg.get<uint8_t>("srv.worker_num", 2);
+			_max_conn_num = _cfg.get<uint32_t>("srv.max_conn_num", 0);
+			_max_chann_num = _cfg.get<uint32_t>("srv.max_chann_num", 0);
 			_login_timeout = _cfg.get<uint32_t>("srv.login_timeout", 30);
 			if (!_daemon)
 				_daemon = 1 == _cfg.get<uint32_t>("srv.daemon", 0);
@@ -55,6 +57,7 @@ public:
 			if (_chann_display_timeout == 0)
 				_chann_display_timeout = 60;
 
+			loadLocalIp(_srv_ips);
 			//print();
 			return true;
 		}
@@ -71,8 +74,11 @@ public:
 	size_t logFileSize() const { return _log_file_size; }
 	uint8_t logLevel() const { return _log_level; }
 	std::string srvAddr() const { return _srv_addr; }
+	std::vector<std::string> srvAddrs() const { return _srv_ips; }
 	uint16_t listenPort() const { return _listen_port; }
 	uint8_t workerNum() const { return _worker_num; }
+	uint32_t connLimit() const { return _max_conn_num; }
+	uint32_t channLimit() const { return _max_chann_num; }
 	uint32_t loginTimeout() const { return _login_timeout; }
 	uint32_t channReceiveBuffSize() const { return _chann_rbuff_size; }
 	uint32_t channSendBuffSize() const { return _chann_sbuff_size; }
@@ -90,6 +96,8 @@ public:
 			<< "][server addr: " << srvAddr()
 			<< "][listen port: " << listenPort()
 			<< "][worker num: " << (int)workerNum()
+			<< "][max conn num: " << connLimit()
+			<< "][max chann num: " << channLimit()
 			<< "][login timeout: " << loginTimeout()
 			<< "][channel receive buffer size: " << channReceiveBuffSize()
 			<< "][channel send buffer size: " << channSendBuffSize()
@@ -100,6 +108,35 @@ public:
 	}
 
 protected:
+	bool loadLocalIp(std::vector<std::string>&iplist)
+	{
+		iplist.clear();
+		struct ifaddrs * if_addrs = NULL;
+		if (getifaddrs(&if_addrs) != 0) {
+			return false;
+		}
+
+		for (struct ifaddrs *pif = if_addrs; pif != NULL; pif = pif->ifa_next)
+		{
+			if (pif->ifa_addr == NULL)
+				continue;
+
+			std::string ifname = pif->ifa_name;
+			if (pif->ifa_addr->sa_family == AF_INET &&
+				ifname.find("lo") == std::string::npos &&
+				ifname.find("tun") == std::string::npos)
+			{
+				void* sin_addr = &((struct sockaddr_in *)pif->ifa_addr)->sin_addr;
+				char addr_buf[INET_ADDRSTRLEN] = {0};
+				inet_ntop(AF_INET, sin_addr, addr_buf, INET_ADDRSTRLEN);
+				iplist.push_back(addr_buf);
+			}
+		}
+		freeifaddrs(if_addrs);
+		return true;
+	}
+
+
 	bool parseCmd(int argc, char* argv[])
 	{
 		_proc_name = argv[0];
@@ -150,6 +187,8 @@ protected:
 	, _srv_addr("")
 	, _listen_port(0)
 	, _worker_num(0)
+	, _max_conn_num(0)
+	, _max_chann_num(0)
 	, _login_timeout(0)
 	, _chann_rbuff_size(1500)
 	, _chann_sbuff_size(1500)
@@ -165,9 +204,12 @@ private:
 	std::string _log_path;
 	size_t  	_log_file_size;//M
 	uint8_t 	_log_level;
+	std::vector<std::string> _srv_ips;
 	std::string _srv_addr;
 	uint16_t 	_listen_port;
 	uint8_t		_worker_num;
+	uint32_t 	_max_conn_num;
+	uint32_t 	_max_chann_num;
 	uint32_t 	_login_timeout;
 	uint32_t 	_chann_rbuff_size;
 	uint32_t	_chann_sbuff_size;

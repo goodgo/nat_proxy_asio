@@ -11,6 +11,7 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <boost/unordered/unordered_set.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>
+#include <boost/smart_ptr/scoped_ptr.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/thread/mutex.hpp>
@@ -19,6 +20,7 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
+#include <vector>
 
 #include "CIoContextPool.hpp"
 #include "CSessionMgr.hpp"
@@ -33,6 +35,7 @@ namespace asio {
 }
 
 class CServer : private boost::noncopyable
+			  , public boost::enable_shared_from_this<CServer>
 {
 public:
 	CServer(uint32_t pool_size);
@@ -45,20 +48,18 @@ public:
 	asio::io_context& getContext();
 
 private:
-	void startAccept();
-	void onAccept(const boost::system::error_code& ec);
+	void acceptor(uint32_t id, asio::ip::tcp::endpoint ep, asio::yield_context yield);
 
 private:
 	CIoContextPool _io_context_pool;
 	asio::signal_set _signal_sets;
-	asio::ip::tcp::acceptor _acceptor;
-	SessionPtr _session_ptr;
 	boost::shared_ptr<CSessionMgr> _session_mgr;
-
 	boost::atomic<uint32_t> _conn_num;
 	bool _started;
 };
 
+typedef boost::shared_ptr<CServer> ServerPtr;
+typedef boost::weak_ptr<CServer> ServerWptr;
 
 
 #endif /* SRC_NET_CSERVER_HPP_ */

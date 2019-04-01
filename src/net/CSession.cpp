@@ -20,7 +20,7 @@ CSession::CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_cont
 , _socket(io_context)
 , _timer(io_context)
 , _timeout(timeout)
-, _id(DEFAULT_ID)
+, _id(0)
 , _private_addr(0)
 , _guid("")
 , _logined(false)

@@ -11,7 +11,7 @@
 #include "util/CLogger.hpp"
 #include "util/CConfig.hpp"
 
-CSessionMgr::CSessionMgr(CServer& server)
+CSessionMgr::CSessionMgr(ServerPtr server)
 : _server(server)
 , _session_id(1000)
 , _channel_id(1)
@@ -69,7 +69,9 @@ void CSessionMgr::closeSessionWithLock(const SessionPtr& ss)
 		boost::mutex::scoped_lock lock(_ss_mutex);
 		_ss_map.erase(ss->id());
 	}
-	_server.sessionClosed(ss);
+	ServerPtr server = _server.lock();
+	if (server)
+		server->sessionClosed(ss);
 }
 
 bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
@@ -111,8 +113,12 @@ ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId&
 		return ChannelPtr();
 	}
 
+	ServerPtr server = _server.lock();
+	if (!server)
+		return ChannelPtr();
+
 	ChannelPtr chann = boost::make_shared<CChannel> (
-			boost::ref(_server.getContext()),
+			boost::ref(server->getContext()),
 			allocChannelId(),
 			gConfig->channReceiveBuffSize(),
 			gConfig->channSendBuffSize(),

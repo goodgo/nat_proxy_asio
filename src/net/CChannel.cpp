@@ -84,6 +84,13 @@ CChannel::~CChannel()
 
 bool CChannel::init(const SessionPtr& src_ss, const SessionPtr& dst_ss)
 {
+	if (!_src_end.init(src_ss)) {
+		return false;
+	}
+
+	if (!_dst_end.init(dst_ss))
+		return false;
+
 	if (!src_ss->addSrcChannel(shared_from_this())) {
 		LOG(ERR) << "channel[" << _id << "] add to source session[" << src_ss->id() << "] failed!";
 		return false;
@@ -94,14 +101,6 @@ bool CChannel::init(const SessionPtr& src_ss, const SessionPtr& dst_ss)
 		LOG(ERR) << "channel[" << _id << "] add to destination session[" << dst_ss->id() << "] failed!";
 		return false;
 	}
-
-	if (!_src_end.init(src_ss)) {
-		return false;
-	}
-
-	if (!_dst_end.init(dst_ss))
-		return false;
-
 	return true;
 }
 

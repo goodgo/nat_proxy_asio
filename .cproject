@@ -60,10 +60,10 @@
 								</option>
 								<option id="gnu.cpp.link.option.other.664675435" name="Other options (-Xlinker [option])" superClass="gnu.cpp.link.option.other"/>
 								<option id="gnu.cpp.link.option.userobjs.584351823" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
-									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_thread.a"/>
-									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_system.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_coroutine.a"/>
+									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_thread.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_context.a"/>
+									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_system.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_chrono.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_log_setup.a"/>
 									<listOptionValue builtIn="false" value="/usr/local/lib/boost/libboost_log.a"/>

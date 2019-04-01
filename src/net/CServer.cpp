@@ -18,8 +18,6 @@
 CServer::CServer(uint32_t pool_size)
 : _io_context_pool(pool_size)
 , _signal_sets(_io_context_pool.getIoContext())
-, _acceptor(_io_context_pool.getIoContext())
-, _session_ptr()
 , _conn_num(0)
 , _started(false)
 {
@@ -44,9 +42,7 @@ void CServer::stop()
 		_started = false;
 
 		boost::system::error_code ignored_ec;
-		_acceptor.cancel(ignored_ec);
 		_signal_sets.cancel(ignored_ec);
-		_session_ptr.reset();
 		_session_mgr->stop();
 		_io_context_pool.stop();
 
@@ -63,8 +59,6 @@ void CServer::stop()
 
 bool CServer::init()
 {
-	boost::system::error_code ec;
-
 	_signal_sets.add(SIGTERM);
 	_signal_sets.add(SIGINT);
 	_signal_sets.add(SIGABRT);
@@ -73,27 +67,9 @@ bool CServer::init()
 	_signal_sets.add(SIGQUIT);
 #endif
 
-	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, this, _1, _2));
-
-	asio::ip::tcp::endpoint ep(
-			asio::ip::address::from_string(gConfig->srvAddr()),
-			gConfig->listenPort());
-	_acceptor.open(ep.protocol(), ec);
-	if (ec) {
-		LOG(ERR) << "server open accept failed: " << ec.message();
-		return false;
-	}
-
-	_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
-	_acceptor.bind(ep, ec);
-	if (ec) {
-		LOG(ERR) << "server bind[" << ep << "] failed: " << ec.message();
-		return false;
-	}
-
-	_acceptor.listen();
+	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, shared_from_this(), _1, _2));
+	_session_mgr = boost::make_shared<CSessionMgr>(shared_from_this());
 	_started = true;
-	_session_mgr = boost::make_shared<CSessionMgr>(boost::ref(*this));
 	return true;
 }
 
@@ -106,6 +82,7 @@ bool CServer::start()
 {
 	if (!init()) {
 		LOG(ERR) << "server init failed!";
+		stop();
 		return false;
 	}
 
@@ -117,62 +94,87 @@ bool CServer::start()
 			<< "(D)"
 #endif
 			<< "> Cores: " << _io_context_pool.workerNum()
-			<< ", service: [" << _acceptor.local_endpoint() << "]"
 			<< " *******";
 
 	LOG(INFO) << gConfig->print();
 
 	_session_mgr->start();
-	startAccept();
+
+	std::vector<std::string> ips = gConfig->srvAddrs();
+	for (size_t i = 0; i < ips.size(); i++) {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(ips[i]), gConfig->listenPort());
+		asio::spawn(getContext(),
+				boost::bind(&CServer::acceptor, shared_from_this(), i+1, ep, boost::placeholders::_1));
+	}
 	_io_context_pool.run();// block here
 	return true;
 }
 
-void CServer::startAccept()
+
+void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yield_context yield)
 {
-	_session_ptr.reset(new CSession(_session_mgr,
-			boost::ref(_io_context_pool.getIoContext()),
-			gConfig->loginTimeout()));
+	boost::system::error_code ec;
 
-	if (!_acceptor.is_open()) {
-		LOGF(FATAL) << "acceptor has been closed!";
-		return;
-	}
 
-	_acceptor.async_accept(
-			_session_ptr->socket(),
-			boost::bind(&CServer::onAccept,
-					this,
-					asio::placeholders::error));
-}
-
-void CServer::onAccept(const boost::system::error_code& ec)
-{
+	asio::ip::tcp::acceptor acceptor(getContext());
+	acceptor.open(listen_ep.protocol(), ec);
 	if (ec) {
-		LOGF(ERR) << "accept error: " << ec.message();
+		LOGF(ERR) << "acceptor[" << id << "] open [" << listen_ep << "] failed: " << ec.message();
 		return;
 	}
 
-	if (!_session_ptr) {
-		LOGF(ERR) << "accept error: session point exception!";
+	acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+	acceptor.bind(listen_ep, ec);
+	if (ec) {
+		LOGF(ERR) << "acceptor[" << id << "] bind [" << listen_ep << "] failed: " << ec.message();
 		return;
 	}
 
-	boost::system::error_code ec2;
-	asio::ip::tcp::endpoint ep = _session_ptr->socket().remote_endpoint(ec2);
-	if (ec2) {
-		LOGF(ERR) << "accept error: " << ec2;
-		return;
-	}
+	acceptor.listen();
 
-	_conn_num.fetch_add(1);
-	LOGF(INFO) << "accept [CONN@" << ep << "] {N:" << _conn_num << "}";
-	_session_ptr->start();
-	startAccept();
+	LOG(INFO) << "acceptor[" << id << "] listenning...[" << listen_ep << "]";
+	const uint32_t limit = gConfig->connLimit();
+	asio::ip::tcp::endpoint conn_ep;
+	while(_started) {
+		SessionPtr ss = boost::make_shared<CSession>(_session_mgr,
+							 boost::ref(_io_context_pool.getIoContext()),
+							 gConfig->loginTimeout());
+
+		acceptor.async_accept(ss->socket(), yield[ec]);
+		if (ec) {
+			LOGF(ERR) << "acceptor[" << id << "] listen error: " << ec.message();
+			continue;
+		}
+
+		if (!ss->socket().is_open()) {
+			LOGF(ERR) << "acceptor[" << id << "] socket has disconnected.";
+			continue;
+		}
+
+		conn_ep = ss->socket().remote_endpoint(ec);
+		if (ec) {
+			LOGF(ERR) << "acceptor[" << id << "] socket get remote endpoint error: " << ec.message();
+			continue;
+		}
+
+		if (gConfig->connLimit() > 0 && _conn_num > limit) {
+			LOG(WARNING) << "acceptor[" << id << "] [CONN@" << conn_ep
+					<< "] exceed max connections: [" << limit
+					<< "] conn will be closed.";
+			continue;
+		}
+
+		_conn_num.fetch_add(1);
+		LOG(INFO) << "acceptor[" << id << "] <- [CONN@" << conn_ep << "] {"
+				<< _conn_num << "/" << limit << "}";
+		ss->start();
+	}
+	LOGF(ERR) << "acceptor[" << id << "] exit.";
 }
 
 void CServer::sessionClosed(const SessionPtr& ss)
 {
 	_conn_num.sub(1);
-	LOGF(TRACE) << "server close connection [ID@" << ss->id() << "] {N:" << _conn_num << "}";
+	LOG(TRACE) << "server close connection [ID@" << ss->id() << "] {"
+			<< _conn_num << "/" << gConfig->connLimit() << "}";
 }

@@ -14,8 +14,6 @@
 #include "CSessionDb.hpp"
 #include "util/CSafeSet.hpp"
 
-const uint32_t DEFAULT_ID = ~0;
-
 class CServer;
 class CSessionMgr : private boost::noncopyable
 {
@@ -26,7 +24,7 @@ public:
 	typedef SessionMap::iterator Iterator;
 	typedef std::map<uint32_t, std::string> FuncNameMap;
 
-	CSessionMgr(CServer& server);
+	CSessionMgr(boost::shared_ptr<CServer> server);
 	~CSessionMgr();
 
 	bool init();
@@ -55,7 +53,7 @@ private:
 	uint32_t allocChannelId() { return _channel_id.fetch_add(1); }
 
 private:
-	CServer& _server;
+	boost::weak_ptr<CServer> _server;
 	mutable boost::mutex _ss_mutex;
 	SessionMap _ss_map;
 	CSessionDb _ss_db;
