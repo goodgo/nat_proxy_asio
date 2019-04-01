@@ -50,6 +50,8 @@ public:
 			_login_timeout = _cfg.get<uint32_t>("srv.login_timeout", 30);
 			if (!_daemon)
 				_daemon = 1 == _cfg.get<uint32_t>("srv.daemon", 0);
+			_redis_addr = _cfg.get<std::string>("redis.addr", "127.0.0.1");
+			_redis_port = _cfg.get<uint16_t>("redis.port", 6379);
 
 			_chann_rbuff_size = _cfg.get<uint32_t>("channel.rbuff_size", 1500);
 			_chann_sbuff_size = _cfg.get<uint32_t>("channel.sbuff_size", 1500);
@@ -79,6 +81,8 @@ public:
 	uint8_t workerNum() const { return _worker_num; }
 	uint32_t connLimit() const { return _max_conn_num; }
 	uint32_t channLimit() const { return _max_chann_num; }
+	std::string redisAddr() const { return _redis_addr; }
+	uint16_t redisPort() const { return _redis_port; }
 	uint32_t loginTimeout() const { return _login_timeout; }
 	uint32_t channReceiveBuffSize() const { return _chann_rbuff_size; }
 	uint32_t channSendBuffSize() const { return _chann_sbuff_size; }
@@ -99,6 +103,8 @@ public:
 			<< "][max conn num: " << connLimit()
 			<< "][max chann num: " << channLimit()
 			<< "][login timeout: " << loginTimeout()
+			<< "][redis addr: " << redisAddr()
+			<< "][redis port: " << redisPort()
 			<< "][channel receive buffer size: " << channReceiveBuffSize()
 			<< "][channel send buffer size: " << channSendBuffSize()
 			<< "][channel display timeout: " << channDisplayTimeout()
@@ -135,7 +141,6 @@ protected:
 		freeifaddrs(if_addrs);
 		return true;
 	}
-
 
 	bool parseCmd(int argc, char* argv[])
 	{
@@ -184,12 +189,14 @@ protected:
 	, _log_path("/usr/local/log/")
 	, _log_file_size(0)
 	, _log_level(0)
-	, _srv_addr("")
+	, _srv_ips()
 	, _listen_port(0)
 	, _worker_num(0)
 	, _max_conn_num(0)
 	, _max_chann_num(0)
 	, _login_timeout(0)
+	, _redis_addr("")
+	, _redis_port(0)
 	, _chann_rbuff_size(1500)
 	, _chann_sbuff_size(1500)
 	, _chann_display_timeout(0)
@@ -211,6 +218,8 @@ private:
 	uint32_t 	_max_conn_num;
 	uint32_t 	_max_chann_num;
 	uint32_t 	_login_timeout;
+	std::string _redis_addr;
+	uint16_t 	_redis_port;
 	uint32_t 	_chann_rbuff_size;
 	uint32_t	_chann_sbuff_size;
 	uint32_t 	_chann_display_timeout;

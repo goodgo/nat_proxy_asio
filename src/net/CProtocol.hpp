@@ -87,16 +87,26 @@ namespace ERRCODE {
 	};
 }
 
+// 客户端类型
+namespace SESSIONTYPE {
+	enum {
+		CLIENT = 0x01,
+		SERVER = 0x02
+	};
+}
+
 // 数据库保存Session信息
 class SSessionInfo
 {
 public:
 	SSessionInfo() : uiId(0), uiAddr(0) {}
-	SSessionInfo(uint32_t id, uint32_t addr) : uiId(id), uiAddr(addr) {}
+	SSessionInfo(uint32_t id, uint32_t addr, const std::string& guid)
+	: uiId(id), uiAddr(addr), sGuid(guid) {}
 	SSessionInfo& operator=(const SSessionInfo& info)
 	{
 		uiId = info.uiId;
 		uiAddr = info.uiAddr;
+		sGuid = info.sGuid;
 		return *this;
 	}
 
@@ -106,8 +116,10 @@ public:
 				sizeof(uiId)+
 				sizeof(uiAddr));
 	}
+
 	uint32_t uiId;
 	uint32_t uiAddr;
+	std::string sGuid;
 };
 
 class CReqPktBase
@@ -125,6 +137,7 @@ public:
 	virtual bool deserialize(const char* p, const size_t n);
 
 public:
+	uint8_t uctype;
 	std::string szGuid;
 	uint32_t uiPrivateAddr;
 };

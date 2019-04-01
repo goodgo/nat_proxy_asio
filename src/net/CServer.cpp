@@ -68,7 +68,9 @@ bool CServer::init()
 #endif
 
 	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, shared_from_this(), _1, _2));
-	_session_mgr = boost::make_shared<CSessionMgr>(shared_from_this());
+	_session_mgr = boost::make_shared<CSessionMgr>(shared_from_this(),
+												   gConfig->redisAddr(),
+												   gConfig->redisPort());
 	_started = true;
 	return true;
 }

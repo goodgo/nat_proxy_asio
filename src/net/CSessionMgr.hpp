@@ -4,6 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/unordered/unordered_map.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/smart_ptr/weak_ptr.hpp>
 #include <boost/atomic.hpp>
 #include <sstream>
@@ -15,7 +16,8 @@
 #include "util/CSafeSet.hpp"
 
 class CServer;
-class CSessionMgr : private boost::noncopyable
+class CSessionMgr : public boost::enable_shared_from_this<CSessionMgr>
+				  , private boost::noncopyable
 {
 public:
 	typedef uint32_t SessionId;
@@ -24,7 +26,7 @@ public:
 	typedef SessionMap::iterator Iterator;
 	typedef std::map<uint32_t, std::string> FuncNameMap;
 
-	CSessionMgr(boost::shared_ptr<CServer> server);
+	CSessionMgr(boost::shared_ptr<CServer> server, std::string addr, uint16_t port);
 	~CSessionMgr();
 
 	bool init();
@@ -37,6 +39,7 @@ public:
 	ChannelPtr createChannel(const SessionPtr& src_ss, const SessionId& dst_id);
 	boost::shared_ptr<std::string> getAllSessions();
 	bool onSessionLogin(const SessionPtr& ss);
+
 	std::string getFuncName(uint8_t func)
 	{
 		FuncNameMap::const_iterator it = _func_name_map.find(func);
@@ -65,4 +68,5 @@ private:
 	boost::atomic<uint32_t> _channel_id;
 };
 
+typedef boost::shared_ptr<CSessionMgr> SessionMgrPtr;
 #endif
