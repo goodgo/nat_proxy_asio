@@ -84,21 +84,23 @@ bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 	}
 
 	ss->id(allocSessionId());
-	if (!addSessionWithLock(ss->id(), ss)) {
-		LOGF(ERR) << "session id[: " << ss->id() << "] insert failed.";
-		_guid_set.remove(ss->guid());
-		return false;
-	}
+	if (ss->type() == SESSIONTYPE::SERVER) {
+		if (!addSessionWithLock(ss->id(), ss)) {
+			LOGF(ERR) << "session id[: " << ss->id() << "] insert failed.";
+			_guid_set.remove(ss->guid());
+			return false;
+		}
 
-	boost::system::error_code ec;
-	asio::ip::tcp::endpoint ep = ss->socket().remote_endpoint(ec);
-	if (ec) {
-		LOGF(ERR) << "accept error: " << ec;
-		return false;
-	}
+		boost::system::error_code ec;
+		const asio::ip::tcp::endpoint& ep = ss->socket().remote_endpoint(ec);
+		if (ec) {
+			LOGF(ERR) << "accept error: " << ec.message();
+			return false;
+		}
 
-	SSessionInfo info(ss->id(), ep.address().to_v4().to_uint(), ss->guid());
-	_ss_db.add(info);
+		SSessionInfo info(ss->id(), ep.address().to_v4().to_uint(), ss->guid());
+		_ss_db.add(info);
+	}
 
 	return true;
 }

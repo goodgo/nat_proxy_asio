@@ -21,6 +21,7 @@ CSession::CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_cont
 , _timer(io_context)
 , _timeout(timeout)
 , _id(0)
+, _session_type(0)
 , _private_addr(0)
 , _guid("")
 , _logined(false)
@@ -157,14 +158,18 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 		onReqLogin(pkt);
 	}break;
 	case FUNC::REQ::PROXY: {
-		boost::shared_ptr<CReqProxyPkt> pkt = boost::make_shared<CReqProxyPkt>();
-		pkt->deserialize(pbuf, nmax);
-		onReqProxy(pkt);
+		if (_session_type == SESSIONTYPE::CLIENT) {
+			boost::shared_ptr<CReqProxyPkt> pkt = boost::make_shared<CReqProxyPkt>();
+			pkt->deserialize(pbuf, nmax);
+			onReqProxy(pkt);
+		}
 	}break;
 	case FUNC::REQ::GETPROXIES: {
-		boost::shared_ptr<CReqGetProxiesPkt> pkt = boost::make_shared<CReqGetProxiesPkt>();
-		pkt->deserialize(pbuf, nmax);
-		onReqGetProxies(pkt);
+		if (_session_type == SESSIONTYPE::CLIENT) {
+			boost::shared_ptr<CReqGetProxiesPkt> pkt = boost::make_shared<CReqGetProxiesPkt>();
+			pkt->deserialize(pbuf, nmax);
+			onReqGetProxies(pkt);
+		}
 	}break;
 	default:
 		break;
@@ -248,13 +253,14 @@ void CSession::onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req)
 	if (!_logined) {
 		_guid = req->szGuid;
 		_private_addr = req->uiPrivateAddr;
+		_session_type = req->uctype;
 
 		_logined = _mgr->onSessionLogin(shared_from_this());
 
 		if (_logined) {
 			resp.error(ERRCODE::SUCCESS);
 			resp.id(_id);
-			LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login success.";
+			LOG(INFO) << "session[" << _id << "] (" << getType() << ") <" << guid() << "> login success.";
 
 			boost::system::error_code ignored_ec;
 			_timer.cancel(ignored_ec);
@@ -311,6 +317,18 @@ void CSession::onReqGetProxies(const boost::shared_ptr<CReqGetProxiesPkt>& req)
 	}
 	doWrite(msg);
 	LOG(TRACE) << "session[" << _id << "] get sessions: " << util::to_hex(*msg);
+}
+
+std::string CSession::getType()
+{
+	switch(_session_type) {
+	case SESSIONTYPE::CLIENT:
+		return "CLIENT";
+	case SESSIONTYPE::SERVER:
+		return "SERVER";
+	default:
+		return "NT";
+	}
 }
 
 bool CSession::addSrcChannel(const ChannelPtr& chann)

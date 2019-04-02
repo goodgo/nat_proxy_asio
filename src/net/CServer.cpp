@@ -150,7 +150,7 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 			continue;
 		}
 
-		asio::ip::tcp::endpoint& conn_ep = ss->socket().remote_endpoint(ec);
+		const asio::ip::tcp::endpoint& conn_ep = ss->socket().remote_endpoint(ec);
 		if (ec) {
 			LOGF(ERR) << "acceptor[" << id << "] socket get remote endpoint error: " << ec.message();
 			continue;

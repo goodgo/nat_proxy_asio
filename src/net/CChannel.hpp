@@ -111,7 +111,7 @@ private:
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;
 	boost::atomic<uint64_t> _down_packs;
-	boost::chrono::steady_clock::time_point _start_tp;
+	boost::posix_time::ptime _start_pt;
 	boost::atomic<bool> _started;
 };
 

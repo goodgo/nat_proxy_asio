@@ -59,6 +59,8 @@ public:
 	void id(uint32_t id) { _id = id; }
 	uint32_t id() { return _id; }
 	asio::ip::tcp::socket& socket() { return _socket; }
+	uint32_t type() { return _session_type; }
+	std::string getType();
 
 	bool addSrcChannel(const ChannelPtr& chann);
 	bool addDstChannel(const ChannelPtr& chann);
@@ -99,6 +101,7 @@ private:
 	TagPktHdr		_hdr;
 	uint32_t		_timeout;
 	uint32_t 		_id;
+	uint32_t	 	_session_type;
 	uint32_t		_private_addr;
 	std::string		_guid;
 

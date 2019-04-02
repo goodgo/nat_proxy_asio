@@ -9,6 +9,7 @@
 #include <boost/bind.hpp>
 #include <boost/chrono/chrono.hpp>
 #include <boost/ratio.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include "CSession.hpp"
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
@@ -71,7 +72,7 @@ CChannel::CChannel(asio::io_context& io,
 , _up_packs(0)
 , _down_bytes(0)
 , _down_packs(0)
-, _start_tp(boost::chrono::steady_clock::now())
+, _start_pt(boost::posix_time::microsec_clock::local_time())
 , _started(false)
 {
 }
@@ -137,11 +138,11 @@ void CChannel::stop()
 		boost::system::error_code ignored_ec;
 		_display_timer.cancel(ignored_ec);
 
-		boost::chrono::duration<double> sec =
-				boost::chrono::steady_clock::now() - _start_tp;
+		boost::posix_time::time_duration td =
+				boost::posix_time::microsec_clock::local_time() - _start_pt;
 
-		LOG(INFO) << "channel[" << _id << "] closed. takes time: " << std::setprecision(3)
-				<< (static_cast<uint32_t>(sec.count()))%(24*3600)/3600.0 << " h"
+		LOG(INFO) << "channel[" << _id << "] closed. takes time: {"
+				<< td.hours() << "h:" << td.minutes() << "m:" << td.seconds() << "s}"
 				<< " | TX packets(" << _up_packs << "): " << util::formatBytes(_up_bytes)
 				<< " | RX packets(" << _down_packs << "):" << util::formatBytes(_down_bytes);
 	}

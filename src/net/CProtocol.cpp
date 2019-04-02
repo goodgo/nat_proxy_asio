@@ -25,6 +25,7 @@ bool CReqLoginPkt::deserialize(const char* p, const size_t n)
 
 	szGuid.assign(p + 1, len);
 	memcpy(&uiPrivateAddr, p + 1 + len, 4);
+	uctype = p[1+len+4];
 	return true;
 }
 
