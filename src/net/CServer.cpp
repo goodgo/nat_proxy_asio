@@ -95,7 +95,7 @@ bool CServer::start()
 #if !defined(NDEBUG)
 			<< "(D)"
 #endif
-			<< "> Cores: " << _io_context_pool.workerNum()
+			<< "> I/O Workers: " << _io_context_pool.workerNum()
 			<< " *******";
 
 	LOG(INFO) << gConfig->print();
@@ -117,7 +117,6 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 {
 	boost::system::error_code ec;
 
-
 	asio::ip::tcp::acceptor acceptor(getContext());
 	acceptor.open(listen_ep.protocol(), ec);
 	if (ec) {
@@ -135,8 +134,6 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 	acceptor.listen();
 
 	LOG(INFO) << "acceptor[" << id << "] listenning...[" << listen_ep << "]";
-	const uint32_t limit = gConfig->connLimit();
-	asio::ip::tcp::endpoint conn_ep;
 	while(_started) {
 		SessionPtr ss = boost::make_shared<CSession>(_session_mgr,
 							 boost::ref(_io_context_pool.getIoContext()),
@@ -153,22 +150,22 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 			continue;
 		}
 
-		conn_ep = ss->socket().remote_endpoint(ec);
+		asio::ip::tcp::endpoint& conn_ep = ss->socket().remote_endpoint(ec);
 		if (ec) {
 			LOGF(ERR) << "acceptor[" << id << "] socket get remote endpoint error: " << ec.message();
 			continue;
 		}
 
-		if (gConfig->connLimit() > 0 && _conn_num > limit) {
+		if (gConfig->connLimit() > 0 && _conn_num > gConfig->connLimit()) {
 			LOG(WARNING) << "acceptor[" << id << "] [CONN@" << conn_ep
-					<< "] exceed max connections: [" << limit
+					<< "] exceed max connections: [" << gConfig->connLimit()
 					<< "] conn will be closed.";
 			continue;
 		}
 
 		_conn_num.fetch_add(1);
 		LOG(INFO) << "acceptor[" << id << "] <- [CONN@" << conn_ep << "] {"
-				<< _conn_num << "/" << limit << "}";
+				<< _conn_num << "/" << gConfig->connLimit() << "}";
 		ss->start();
 	}
 	LOGF(ERR) << "acceptor[" << id << "] exit.";

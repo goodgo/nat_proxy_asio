@@ -110,15 +110,17 @@ boost::shared_ptr<std::string> CSessionMgr::getAllSessions()
 
 ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId& dst_id)
 {
+	ServerPtr server = _server.lock();
+	if (!server) {
+		LOGF(ERR) << "session[" << src_ss->id() << "] get server failed.";
+		return ChannelPtr();
+	}
+
 	SessionPtr dst_ss = getSessionWithLock(dst_id);
 	if (!dst_ss) {
 		LOGF(ERR) << "session[" << src_ss->id() << "] get dest[" << dst_id << "] failed.";
 		return ChannelPtr();
 	}
-
-	ServerPtr server = _server.lock();
-	if (!server)
-		return ChannelPtr();
 
 	ChannelPtr chann = boost::make_shared<CChannel> (
 			boost::ref(server->getContext()),
@@ -135,4 +137,3 @@ ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId&
 	}
 	return chann;
 }
-

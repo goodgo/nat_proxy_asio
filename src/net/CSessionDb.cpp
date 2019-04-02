@@ -81,23 +81,25 @@ void CSessionDb::operate()
 		const SSessionInfo& info = item.info;
 		_db.insert(std::make_pair(info.uiId, info));
 
-		std::list<RedisBuffer> args;
-		std::string key = kRedisKeySession+info.sGuid;
-		args.push_back(key);
+		if (_redis.isConnected()) {
+			std::list<RedisBuffer> args;
+			std::string key = kRedisKeySession+info.sGuid;
+			args.push_back(key);
 
-		args.push_back(kRedisFieldSessionId);
-		std::string value_id = util::to_string(info.uiId);
-		args.push_back(value_id);
+			args.push_back(kRedisFieldSessionId);
+			std::string value_id = util::to_string(info.uiId);
+			args.push_back(value_id);
 
-		args.push_back(kRedisFieldSessionAddr);
-		std::string value_addr = util::to_string(info.uiAddr);
-		args.push_back(value_addr);
+			args.push_back(kRedisFieldSessionAddr);
+			std::string value_addr = util::to_string(info.uiAddr);
+			args.push_back(value_addr);
 
-		args.push_back(kRedisFieldSessionGuid);
-		args.push_back(info.sGuid);
+			args.push_back(kRedisFieldSessionGuid);
+			args.push_back(info.sGuid);
 
-		_redis.command(kRedisHMSET, args,
-				boost::bind(&CSessionDb::onRedisSetSessionCompleted, this, info.uiId, _1));
+			_redis.command(kRedisHMSET, args,
+					boost::bind(&CSessionDb::onRedisSetSessionCompleted, this, info.uiId, _1));
+		}
 
 		LOG(TRACE) << "session db add[" << info.uiId << "] size: " << _db.size();
 		break;
@@ -110,16 +112,16 @@ void CSessionDb::operate()
 		SSessionInfo info = it->second;
 
 		_db.erase(info.uiId);
-
-		std::list<RedisBuffer> args;
-		std::string key = kRedisKeySession+info.sGuid;
-		args.push_back(key);
-		args.push_back(kRedisFieldSessionId);
-		args.push_back(kRedisFieldSessionAddr);
-		args.push_back(kRedisFieldSessionGuid);
-		_redis.command(kRedisHDEL, args,
-				boost::bind(&CSessionDb::onRedisDelSessionCompleted, this, info.uiId, _1));
-
+		if (_redis.isConnected()) {
+			std::list<RedisBuffer> args;
+			std::string key = kRedisKeySession+info.sGuid;
+			args.push_back(key);
+			args.push_back(kRedisFieldSessionId);
+			args.push_back(kRedisFieldSessionAddr);
+			args.push_back(kRedisFieldSessionGuid);
+			_redis.command(kRedisHDEL, args,
+					boost::bind(&CSessionDb::onRedisDelSessionCompleted, this, info.uiId, _1));
+		}
 		LOG(TRACE) << "session db del[" << info.uiId << "] size: " << _db.size();
 		break;
 	}
