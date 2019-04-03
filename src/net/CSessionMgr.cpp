@@ -94,7 +94,7 @@ bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 		boost::system::error_code ec;
 		const asio::ip::tcp::endpoint& ep = ss->socket().remote_endpoint(ec);
 		if (ec) {
-			LOGF(ERR) << "accept error: " << ec.message();
+			LOGF(ERR) << "get remote endpoint error: " << ec.message();
 			return false;
 		}
 
@@ -129,7 +129,8 @@ ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId&
 			allocChannelId(),
 			gConfig->channReceiveBuffSize(),
 			gConfig->channSendBuffSize(),
-			gConfig->channDisplayTimeout()
+			gConfig->channRecvTimeout(),
+			gConfig->channDisplayInterval()
 	);
 
 	if (!chann->init(src_ss, dst_ss)) {

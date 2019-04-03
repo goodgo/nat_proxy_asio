@@ -32,13 +32,13 @@ namespace util {
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	//std::cerr << "fork() failed." << std::endl;
+	    	std::cerr << "fork() failed." << std::endl;
 	        return false;
 	    }
 
 	    int ret = setsid();
 	    if (ret < 0) {
-	    	//std::cerr << "setsid() failed." << std::endl;
+	    	std::cerr << "setsid() failed." << std::endl;
 	        return false;
 	    }
 
@@ -46,7 +46,7 @@ namespace util {
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	//std::cerr << "fork() failed." << std::endl;
+	    	std::cerr << "fork() failed." << std::endl;
 	        return false;
 	    }
 
@@ -55,7 +55,7 @@ namespace util {
 
 	    ret = chdir("/");
 	    if (ret < 0) {
-	    	//std::cerr << "chdir(\"/\") failed." << std::endl;
+	    	std::cerr << "chdir(\"/\") failed." << std::endl;
 	        return false;
 	    }
 
@@ -111,6 +111,5 @@ namespace util {
 
 	    free(strings);
 	    outfile.close();
-	    /**/
 	}
 }
