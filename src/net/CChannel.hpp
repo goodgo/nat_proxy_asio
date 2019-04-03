@@ -45,7 +45,8 @@ public:
 			uint32_t id,
 			uint32_t rbuff_size = 1500,
 			uint32_t sbuff_size = 1500,
-			uint32_t display_timeout = 60);
+			uint32_t recv_timeo = 30,
+			uint32_t display_interval = 60);
 	~CChannel();
 
 	bool init(const boost::shared_ptr<CSession>& src_ss,
@@ -78,10 +79,16 @@ private:
 	class CEnd
 	{
 	public:
-		CEnd(asio::io_context& io, uint32_t rbuff_size, uint32_t sbuff_size);
+		CEnd(asio::io_context& io, uint32_t chann_id, std::string dir,
+			uint32_t rbuff_size, uint32_t sbuff_size, uint32_t recv_timeo);
 		~CEnd();
 		bool init(boost::shared_ptr<CSession> ss);
 		void stop();
+		inline void updateTime() {
+			if (_timeout > 0)
+				_endtime = boost::chrono::steady_clock::now();
+		}
+		void checkTimeout(asio::yield_context yield);
 		bool opened() { return _opened; }
 		uint16_t localPort() { return _local_ep.port(); }
 		asio::ip::udp::socket::endpoint_type remote() { return _remote_ep; }
@@ -91,12 +98,18 @@ private:
 
 	public:
 		asio::io_context::strand _strand;
-		asio::ip::udp::socket _socket;
+		uint32_t _id;
+		std::string _dir;
+		asio::ip::udp::socket 	_socket;
 		asio::ip::udp::endpoint _local_ep;
 		asio::ip::udp::endpoint _remote_ep;
+
 		boost::weak_ptr<CSession> _owner_ss;
 		uint32_t _owner_id;
 		std::vector<char> _buf;
+
+		uint32_t _timeout;
+		boost::chrono::steady_clock::time_point _endtime;
 		bool _opened;
 	};
 	//////////////////////////////////////////////////////////////
@@ -105,13 +118,15 @@ private:
 	CEnd _dst_end;
 
 	asio::io_context::strand _strand;
-	asio::steady_timer _display_timer;
-	uint32_t _display_timeout;
 	boost::atomic<uint64_t> _up_bytes;
 	boost::atomic<uint64_t> _up_packs;
 	boost::atomic<uint64_t> _down_bytes;
 	boost::atomic<uint64_t> _down_packs;
 	boost::posix_time::ptime _start_pt;
+
+	asio::steady_timer _display_timer;
+	uint32_t 		_display_interval;
+
 	boost::atomic<bool> _started;
 };
 

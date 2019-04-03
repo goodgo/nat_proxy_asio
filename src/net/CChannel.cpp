@@ -14,22 +14,34 @@
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
-
-CChannel::CEnd::CEnd(asio::io_context& io, uint32_t rbuff_size, uint32_t sbuff_size)
+CChannel::CEnd::CEnd(asio::io_context& io, uint32_t chann_id, std::string dir,
+		uint32_t rbuff_size, uint32_t sbuff_size, uint32_t recv_timeo)
 : _strand(io)
+, _id(chann_id)
+, _dir(dir)
 , _socket(io, asio::ip::udp::v4())
 , _owner_id(0)
 , _buf(rbuff_size)
+, _timeout(recv_timeo)
+, _endtime(boost::chrono::steady_clock::now())
 , _opened(false)
 {
 	_socket.set_option(asio::ip::udp::socket::reuse_address(true));
 	_socket.set_option(asio::ip::udp::socket::send_buffer_size(sbuff_size));
 	_socket.set_option(asio::ip::udp::socket::receive_buffer_size(rbuff_size));
+
+	updateTime();
 }
 
 CChannel::CEnd::~CEnd()
 {
+}
 
+void CChannel::CEnd::stop()
+{
+	boost::system::error_code ignored_ec;
+	_socket.close(ignored_ec);
+	_owner_ss.reset();
 }
 
 bool CChannel::CEnd::init(SessionPtr ss)
@@ -37,7 +49,7 @@ bool CChannel::CEnd::init(SessionPtr ss)
 	boost::system::error_code ec;
 	_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0), ec);
 	if (ec) {
-		LOG(ERR) << _owner_id << " bind udp socket error: " << ec.message();
+		LOG(ERR) << "channel[" << _id << "] " << _dir << " bind udp socket error: " << ec.message();
 		return false;
 	}
 
@@ -46,33 +58,58 @@ bool CChannel::CEnd::init(SessionPtr ss)
 	_local_ep = _socket.local_endpoint();
 	_remote_ep = asio::ip::udp::endpoint(ss->socket().remote_endpoint().address(), 0);
 
+	if (_timeout > 0)
+		asio::spawn(_strand, boost::bind(&CChannel::CEnd::checkTimeout, this, boost::placeholders::_1));
 	return true;
 }
 
-void CChannel::CEnd::stop()
+void CChannel::CEnd::checkTimeout(asio::yield_context yield)
 {
-	LOGF(INFO) << "channel stop end.";
+	using namespace boost::chrono;
+
 	boost::system::error_code ec;
-	_socket.close(ec);
-	_owner_ss.reset();
+	duration<uint32_t> expired;
+	boost::asio::steady_timer timer(_strand.get_io_context());
+
+	while(_socket.is_open()) {
+		expired = duration_cast<seconds>(steady_clock::now() - _endtime);
+		if (expired.count() > _timeout) {
+			time_t t = util::steady_clock_to_time_t(_endtime);
+			boost::posix_time::ptime pt = boost::posix_time::from_time_t(t);
+
+			LOGF(ERR)  << "channel[" << _id <<  "] " << _dir << " timeout["
+					<< expired.count() << "] last update: " << pt;
+			stop();
+			break;
+		}
+
+		timer.expires_from_now(seconds(10));
+		timer.async_wait(yield[ec]);
+		if (ec) {
+			LOGF(ERR) << "channel[" << _id << "] " << _dir << " timer error: " << ec.message();
+			stop();
+			continue;
+		}
+	}
 }
 
 CChannel::CChannel(asio::io_context& io,
 		uint32_t id,
 		uint32_t rbuff_size,
 		uint32_t sbuff_size,
-		uint32_t display_timeout)
+		uint32_t recv_timeo,
+		uint32_t display_interval)
 : _id(id)
-, _src_end(io, rbuff_size, sbuff_size)
-, _dst_end(io, rbuff_size, sbuff_size)
+, _src_end(io, id, "src", rbuff_size, sbuff_size, recv_timeo)
+, _dst_end(io, id, "dst", rbuff_size, sbuff_size, recv_timeo)
 , _strand(io)
-, _display_timer(io)
-, _display_timeout(display_timeout)
 , _up_bytes(0)
 , _up_packs(0)
 , _down_bytes(0)
 , _down_packs(0)
 , _start_pt(boost::posix_time::microsec_clock::local_time())
+, _display_timer(io)
+, _display_interval(display_interval)
 , _started(false)
 {
 }
@@ -110,8 +147,7 @@ void CChannel::toStop()
 	_strand.get_io_context().post(
 			_strand.wrap(
 					boost::bind(&CChannel::stop, shared_from_this())
-			)
-	);
+	));
 	LOGF(TRACE) << "channel[" << _id
 			<< "]("	 << _src_end.sessionId()
 			<< ") --> (" << _dst_end.sessionId()
@@ -165,8 +201,10 @@ void CChannel::start()
 				&CChannel::uploader, shared_from_this(), boost::placeholders::_1));
 		asio::spawn(_dst_end._strand, boost::bind(
 				&CChannel::downloader, shared_from_this(), boost::placeholders::_1));
-		asio::spawn(_strand, boost::bind(
-				&CChannel::displayer, shared_from_this(), boost::placeholders::_1));
+
+		if (_display_interval > 0)
+			asio::spawn(_strand, boost::bind(
+					&CChannel::displayer, shared_from_this(), boost::placeholders::_1));
 	}
 }
 
@@ -194,6 +232,7 @@ void CChannel::uploader(asio::yield_context yield)
 					<< "](" 	<< _dst_end.sessionId() << ") src receive auth error: " << ec.message();
 			continue;
 		}
+		_src_end.updateTime();
 
 		LOG(DEBUG) << "channel[" << _id << "] "
 				<< "("		<< _src_end.sessionId()
@@ -245,12 +284,16 @@ void CChannel::uploader(asio::yield_context yield)
 					<< ")["		<< _src_end.remote()
 					<< " --> "	<< _src_end.localPort()
 					<< "]("		<< _dst_end.sessionId() << ") upload receive error: " << ec.message();
+
+			if (!_src_end._socket.is_open()) stop();
 			continue;
 		}
 
 		if (ep != _src_end.remote()) {
-			if (ep.address() != _src_end.remote().address())
+			if (ep.address() != _src_end.remote().address()) {
+				LOG(ERR) << "channel[" << _id << "] " << "source recv from invalid ip [" << ep << "]";
 				continue;
+			}
 
 			LOG(WARNING) << "channel[" << _id << "] "
 					<< "source remote endpoint change: [" << _src_end.remote() << "] ==> [" << ep << "]";
@@ -258,7 +301,8 @@ void CChannel::uploader(asio::yield_context yield)
 			_src_end._remote_ep.port(ep.port());
 		}
 
-		if (bytes <= 2)
+		_src_end.updateTime();
+		if (bytes <= 2) // 心跳
 			continue;
 
 		bytes = _dst_end._socket.async_send(asio::buffer(_src_end._buf, bytes), yield[ec]);
@@ -268,6 +312,8 @@ void CChannel::uploader(asio::yield_context yield)
 					<< ")["		<< _dst_end.remote()
 					<< " --> "	<< _src_end.localPort()
 					<< "]("		<< _dst_end.sessionId() << ") upload send error: " << ec.message();
+
+			if (!_dst_end._socket.is_open()) stop();
 			continue;
 		}
 
@@ -300,6 +346,8 @@ void CChannel::downloader(asio::yield_context yield)
 					<< "]("		<< _dst_end.sessionId() << ") dst receive auth error: " << ec.message();
 			continue;
 		}
+
+		_dst_end.updateTime();
 
 		if (doAuth(_dst_end._buf.data(), bytes))
 			_dst_end._opened = true;
@@ -344,10 +392,13 @@ void CChannel::downloader(asio::yield_context yield)
 					<< ")[" 	<< _dst_end.localPort()
 					<< " <-- "	<< _dst_end.remote()
 					<< "]("		<< _dst_end.sessionId() << ") download receive error: " << ec.message();
+
+			if (!_dst_end._socket.is_open()) stop();
 			continue;
 		}
 
-		if (bytes <= 2)
+		_dst_end.updateTime();
+		if (bytes <= 2) // 心跳
 			continue;
 
 		bytes = _src_end._socket.async_send_to(asio::buffer(_dst_end._buf, bytes), _src_end._remote_ep, yield[ec]);
@@ -357,6 +408,8 @@ void CChannel::downloader(asio::yield_context yield)
 					<< ")["		<< _dst_end.localPort()
 					<< " <-- "	<< _src_end.remote()
 					<< "]("		<< _dst_end.sessionId() << ") download send error: " << ec.message();
+
+			if (!_src_end._socket.is_open()) stop();
 			continue;
 		}
 
@@ -377,7 +430,7 @@ void CChannel::displayer(asio::yield_context yield)
 	uint64_t down_packs_prev = 0;
 
 	while(_started) {
-		_display_timer.expires_from_now(boost::chrono::seconds(_display_timeout));
+		_display_timer.expires_from_now(boost::chrono::seconds(_display_interval));
 		_display_timer.async_wait(yield[ec]);
 		if (ec) {
 			LOG(ERR) << "channel[" << _id << "] displayer timer error: " << ec.message();
@@ -391,11 +444,11 @@ void CChannel::displayer(asio::yield_context yield)
 				<< ")["			<< _src_end.remote()
 				<< " <--> " 	<< _dst_end.remote()
 				<< "]("			<< _dst_end.sessionId() << ") "
-				<< "Tx("		<< formatBytes((_up_bytes - up_bytes_prev) / _display_timeout)
-				<< "ps/"		<< (_up_packs - up_packs_prev) / _display_timeout
+				<< "Tx("		<< formatBytes((_up_bytes - up_bytes_prev) / _display_interval)
+				<< "ps/"		<< (_up_packs - up_packs_prev) / _display_interval
 				<< " pps) {"	<< formatBytes(_up_bytes) << ", "  << _up_packs
-				<< " p} | Rx("	<< formatBytes((_down_bytes - down_bytes_prev) / _display_timeout)
-				<< "ps/"		<< (_down_packs - down_packs_prev) / _display_timeout
+				<< " p} | Rx("	<< formatBytes((_down_bytes - down_bytes_prev) / _display_interval)
+				<< "ps/"		<< (_down_packs - down_packs_prev) / _display_interval
 				<< " pps) {"	<< formatBytes(_down_bytes) << ", " << _down_packs
 				<< " p}"
 				;

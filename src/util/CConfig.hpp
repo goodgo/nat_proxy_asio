@@ -55,9 +55,8 @@ public:
 
 			_chann_rbuff_size = _cfg.get<uint32_t>("channel.rbuff_size", 1500);
 			_chann_sbuff_size = _cfg.get<uint32_t>("channel.sbuff_size", 1500);
-			_chann_display_timeout = _cfg.get<uint32_t>("channel.display_timeout", 60);
-			if (_chann_display_timeout == 0)
-				_chann_display_timeout = 60;
+			_chann_recv_timeout = _cfg.get<uint32_t>("channel.recv_timeout", 0);
+			_chann_display_interval = _cfg.get<uint32_t>("channel.display_interval", 0);
 
 			loadLocalIp(_srv_ips);
 			//print();
@@ -86,7 +85,8 @@ public:
 	uint32_t loginTimeout() const { return _login_timeout; }
 	uint32_t channReceiveBuffSize() const { return _chann_rbuff_size; }
 	uint32_t channSendBuffSize() const { return _chann_sbuff_size; }
-	uint32_t channDisplayTimeout() const { return _chann_display_timeout; }
+	uint32_t channRecvTimeout() const { return _chann_recv_timeout; }
+	uint32_t channDisplayInterval() const { return _chann_display_interval; }
 	bool daemon() const { return _daemon; }
 
 	/////////////////////////////////////////////////////////////////////
@@ -107,7 +107,8 @@ public:
 			<< "][redis port: " << redisPort()
 			<< "][channel receive buffer size: " << channReceiveBuffSize()
 			<< "][channel send buffer size: " << channSendBuffSize()
-			<< "][channel display timeout: " << channDisplayTimeout()
+			<< "][channel receive timeout: " << channRecvTimeout()
+			<< "][channel display interval: " << channDisplayInterval()
 			<< "][is daemon: " << std::boolalpha << daemon()
 			<< "]";
 		return ss.str();
@@ -199,7 +200,8 @@ protected:
 	, _redis_port(0)
 	, _chann_rbuff_size(1500)
 	, _chann_sbuff_size(1500)
-	, _chann_display_timeout(0)
+	, _chann_recv_timeout(0)
+	, _chann_display_interval(0)
 	, _daemon(false)
 	{}
 
@@ -222,7 +224,8 @@ private:
 	uint16_t 	_redis_port;
 	uint32_t 	_chann_rbuff_size;
 	uint32_t	_chann_sbuff_size;
-	uint32_t 	_chann_display_timeout;
+	uint32_t	_chann_recv_timeout;
+	uint32_t 	_chann_display_interval;
 	bool		_daemon;
 };
 
