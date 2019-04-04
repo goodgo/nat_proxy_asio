@@ -25,5 +25,6 @@ C_UPPER_DEPS :=
 SUBDIRS := \
 src \
 src/net \
+src/redisclient/impl \
 src/util \
 

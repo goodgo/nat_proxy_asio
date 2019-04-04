@@ -84,7 +84,7 @@ bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 	}
 
 	ss->id(allocSessionId());
-	if (ss->type() == SESSIONTYPE::SERVER) {
+	if (ss->type() == SESSIONTYPE::SERVER || ss->type() == SESSIONTYPE::ANYONE) {
 		if (!addSessionWithLock(ss->id(), ss)) {
 			LOGF(ERR) << "session id[: " << ss->id() << "] insert failed.";
 			_guid_set.remove(ss->guid());

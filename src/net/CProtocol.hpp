@@ -91,7 +91,8 @@ namespace ERRCODE {
 namespace SESSIONTYPE {
 	enum {
 		CLIENT = 0x01,
-		SERVER = 0x02
+		SERVER = 0x02,
+		ANYONE = 0x03
 	};
 }
 

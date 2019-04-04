@@ -123,8 +123,7 @@ protected:
 			return false;
 		}
 
-		for (struct ifaddrs *pif = if_addrs; pif != NULL; pif = pif->ifa_next)
-		{
+		for (struct ifaddrs *pif = if_addrs; pif != NULL; pif = pif->ifa_next) {
 			if (pif->ifa_addr == NULL)
 				continue;
 

@@ -158,14 +158,14 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 		onReqLogin(pkt);
 	}break;
 	case FUNC::REQ::PROXY: {
-		if (_session_type == SESSIONTYPE::CLIENT) {
+		if (_session_type == SESSIONTYPE::CLIENT || _session_type == SESSIONTYPE::ANYONE) {
 			boost::shared_ptr<CReqProxyPkt> pkt = boost::make_shared<CReqProxyPkt>();
 			pkt->deserialize(pbuf, nmax);
 			onReqProxy(pkt);
 		}
 	}break;
 	case FUNC::REQ::GETPROXIES: {
-		if (_session_type == SESSIONTYPE::CLIENT) {
+		if (_session_type == SESSIONTYPE::CLIENT || _session_type == SESSIONTYPE::ANYONE) {
 			boost::shared_ptr<CReqGetProxiesPkt> pkt = boost::make_shared<CReqGetProxiesPkt>();
 			pkt->deserialize(pbuf, nmax);
 			onReqGetProxies(pkt);
@@ -326,6 +326,8 @@ std::string CSession::getType()
 		return "CLIENT";
 	case SESSIONTYPE::SERVER:
 		return "SERVER";
+	case SESSIONTYPE::ANYONE:
+		return "ANYONE";
 	default:
 		return "NT";
 	}

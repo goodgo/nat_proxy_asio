@@ -9,6 +9,7 @@ RM := rm -rf
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include src/util/subdir.mk
+-include src/redisclient/impl/subdir.mk
 -include src/net/subdir.mk
 -include src/subdir.mk
 -include subdir.mk
