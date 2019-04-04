@@ -329,7 +329,7 @@ std::string CSession::getType()
 	case SESSIONTYPE::ANYONE:
 		return "ANYONE";
 	default:
-		return "NT";
+		return "NONE";
 	}
 }
 

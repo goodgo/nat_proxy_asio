@@ -2,6 +2,8 @@
 *.d
 *.log
 
-nat_proxy_asio
+.svn
+include
+libs
 /Debug/
 /Release/
