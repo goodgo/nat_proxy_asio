@@ -69,6 +69,8 @@ public:
 	}
 
 private:
+	bool srcAuth(asio::yield_context& yield);
+	bool dstAuth(asio::yield_context& yield);
 	void uploader(asio::yield_context yield);
 	void downloader(asio::yield_context yield);
 	void displayer(asio::yield_context yield);
@@ -86,7 +88,7 @@ private:
 		void stop();
 		inline void updateTime() {
 			if (_timeout > 0)
-				_endtime = boost::chrono::steady_clock::now();
+				_endtime = boost::posix_time::second_clock::local_time();
 		}
 		void checkTimeout(asio::yield_context yield);
 		bool opened() { return _opened; }
@@ -109,7 +111,8 @@ private:
 		std::vector<char> _buf;
 
 		uint32_t _timeout;
-		boost::chrono::steady_clock::time_point _endtime;
+		//boost::chrono::steady_clock::time_point _endtime;
+		boost::posix_time::ptime _endtime;
 		bool _opened;
 	};
 	//////////////////////////////////////////////////////////////

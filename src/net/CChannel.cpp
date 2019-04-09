@@ -23,7 +23,7 @@ CChannel::CEnd::CEnd(asio::io_context& io, uint32_t chann_id, std::string dir,
 , _owner_id(0)
 , _buf(rbuff_size)
 , _timeout(recv_timeo)
-, _endtime(boost::chrono::steady_clock::now())
+, _endtime()
 , _opened(false)
 {
 	_socket.set_option(asio::ip::udp::socket::reuse_address(true));
@@ -47,7 +47,13 @@ void CChannel::CEnd::stop()
 bool CChannel::CEnd::init(SessionPtr ss)
 {
 	boost::system::error_code ec;
-	_socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0), ec);
+	asio::ip::tcp::endpoint ep = ss->socket().local_endpoint(ec);
+	if (ec) {
+		LOG(ERR) << "channel[" << _id << "] " << _dir << " get local endpoint error: " << ec.message();
+		return false;
+	}
+
+	_socket.bind(asio::ip::udp::endpoint(ep.address(), 0), ec);
 	if (ec) {
 		LOG(ERR) << "channel[" << _id << "] " << _dir << " bind udp socket error: " << ec.message();
 		return false;
@@ -55,8 +61,13 @@ bool CChannel::CEnd::init(SessionPtr ss)
 
 	_owner_ss = ss;
 	_owner_id = ss->id();
-	_local_ep = _socket.local_endpoint();
-	_remote_ep = asio::ip::udp::endpoint(ss->socket().remote_endpoint().address(), 0);
+	_local_ep = _socket.local_endpoint(ec);
+	ep = ss->socket().remote_endpoint(ec);
+	if (ec) {
+		LOG(ERR) << "channel[" << _id << "] " << _dir << " get remote endpoint error: " << ec.message();
+		return false;
+	}
+	_remote_ep.address(ep.address());
 
 	if (_timeout > 0)
 		asio::spawn(_strand, boost::bind(&CChannel::CEnd::checkTimeout, this, boost::placeholders::_1));
@@ -68,17 +79,14 @@ void CChannel::CEnd::checkTimeout(asio::yield_context yield)
 	using namespace boost::chrono;
 
 	boost::system::error_code ec;
-	duration<uint32_t> expired;
+	boost::posix_time::time_duration td;
 	boost::asio::steady_timer timer(_strand.get_io_context());
 
 	while(_socket.is_open()) {
-		expired = duration_cast<seconds>(steady_clock::now() - _endtime);
-		if (expired.count() > _timeout) {
-			time_t t = util::steady_clock_to_time_t(_endtime);
-			boost::posix_time::ptime pt = boost::posix_time::from_time_t(t);
-
-			LOGF(ERR)  << "channel[" << _id <<  "] " << _dir << " timeout["
-					<< expired.count() << "] last update: " << pt;
+		td = boost::posix_time::second_clock::local_time() - _endtime;
+		if (td.total_seconds() >= _timeout) {
+			LOGF(ERR) << "channel[" << _id <<  "] " << _dir << " timeout["
+					<< td.total_seconds() << "] last update: " << _endtime;
 			stop();
 			break;
 		}
@@ -175,7 +183,7 @@ void CChannel::stop()
 		_display_timer.cancel(ignored_ec);
 
 		boost::posix_time::time_duration td =
-				boost::posix_time::microsec_clock::local_time() - _start_pt;
+				boost::posix_time::second_clock::local_time() - _start_pt;
 
 		LOG(INFO) << "channel[" << _id << "] closed. takes time: {"
 				<< td.hours() << "h:" << td.minutes() << "m:" << td.seconds() << "s}"
@@ -208,19 +216,10 @@ void CChannel::start()
 	}
 }
 
-
-void CChannel::uploader(asio::yield_context yield)
+bool CChannel::srcAuth(asio::yield_context& yield)
 {
 	boost::system::error_code ec;
 	size_t bytes = 0;
-
-	LOG(TRACE) << "channel[" << _id << "] "
-			<< "("		<< _src_end.sessionId()
-			<< ")["		<< _src_end.remote()
-			<< " --> "	<< _src_end.localPort()
-			<< " --> "	<< _dst_end.localPort()
-			<< " --> "	<< _dst_end.remote()
-			<< "]("		<< _dst_end.sessionId() << ") src start auth...";
 
 	while(_started && !_src_end.opened()) {
 		bytes = _src_end._socket.async_receive_from(asio::buffer(_src_end._buf), _src_end._remote_ep, yield[ec]);
@@ -230,6 +229,11 @@ void CChannel::uploader(asio::yield_context yield)
 					<< ")["		<< _src_end.remote()
 					<< " --> "	<< _src_end.localPort()
 					<< "](" 	<< _dst_end.sessionId() << ") src receive auth error: " << ec.message();
+
+			if (!_src_end._socket.is_open()) {
+				stop();
+				return false;
+			}
 			continue;
 		}
 		_src_end.updateTime();
@@ -261,8 +265,12 @@ void CChannel::uploader(asio::yield_context yield)
 					<< "("		<< _src_end.sessionId()
 					<< ")["		<< _src_end.remote()
 					<< " <-- "	<< _src_end.localPort()
-					<< "]("		<< _dst_end.sessionId()
-					<< ") src echo auth[" << bytes << "B] error: " << ec.message();
+					<< "]("		<< _dst_end.sessionId() << ") src echo auth[" << bytes << "B] error: " << ec.message();
+
+			if (!_src_end._socket.is_open()) {
+				stop();
+				return false;
+			}
 			continue;
 		}
 	}
@@ -274,6 +282,19 @@ void CChannel::uploader(asio::yield_context yield)
 			<< " --> " << _dst_end.localPort()
 			<< " --> " << _dst_end.remote()
 			<< "]("    << _dst_end.sessionId() << ") start upload...";
+
+	return true;
+}
+
+void CChannel::uploader(asio::yield_context yield)
+{
+	if (!srcAuth(boost::ref(yield))){
+		LOGF(TRACE) << "channel[" << _id << "] uploader exit!";
+		return;
+	}
+
+	boost::system::error_code ec;
+	size_t bytes = 0;
 
 	asio::ip::udp::endpoint ep;
 	while (_started) {
@@ -323,18 +344,10 @@ void CChannel::uploader(asio::yield_context yield)
 	LOGF(TRACE) << "channel[" << _id << "] uploader exit!";
 }
 
-void CChannel::downloader(asio::yield_context yield)
+bool CChannel::dstAuth(asio::yield_context& yield)
 {
 	boost::system::error_code ec;
 	size_t bytes = 0;
-
-	LOG(TRACE) << "channel[" << _id << "] "
-			<< "(" << _src_end.sessionId()
-			<< ")["    << _src_end.remote()
-			<< " <-- " << _src_end.localPort()
-			<< " <-- " << _dst_end.localPort()
-			<< " <-- " << _dst_end.remote()
-			<< "]("    << _dst_end.sessionId() << ") dst start auth...";
 
 	while(_started && !_dst_end._opened) {
 		bytes = _dst_end._socket.async_receive_from(asio::buffer(_dst_end._buf), _dst_end._remote_ep, yield[ec]);
@@ -344,6 +357,11 @@ void CChannel::downloader(asio::yield_context yield)
 					<< ")["		<< _dst_end.localPort()
 					<< " <-- "	<< _dst_end.remote()
 					<< "]("		<< _dst_end.sessionId() << ") dst receive auth error: " << ec.message();
+
+			if (!_dst_end._socket.is_open()) {
+				stop();
+				return false;
+			}
 			continue;
 		}
 
@@ -369,6 +387,12 @@ void CChannel::downloader(asio::yield_context yield)
 				<< " <-- "	<< _dst_end.remote()
 				<< "]("		<< _dst_end.sessionId()
 				<< ") dst echo auth[" << bytes << "B] error: " << ec.message();
+
+			if (!_dst_end._socket.is_open()) {
+				stop();
+				return false;
+			}
+			continue;
 		}
 	}
 
@@ -379,6 +403,19 @@ void CChannel::downloader(asio::yield_context yield)
 			<< " <-- "	<< _dst_end.localPort()
 			<< " <-- "	<< _dst_end.remote()
 			<< "]("		<< _dst_end.sessionId() << ") start download...";
+
+	return true;
+}
+
+void CChannel::downloader(asio::yield_context yield)
+{
+	if (!dstAuth(boost::ref(yield))) {
+		LOGF(TRACE) << "channel[" << _id << "] downloader exit!";
+		return;
+	}
+
+	boost::system::error_code ec;
+	size_t bytes = 0;
 
 	_dst_end._socket.connect(_dst_end.remote(), ec);
 	if (ec)

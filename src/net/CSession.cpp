@@ -363,7 +363,7 @@ void CSession::closeDstChannel(const ChannelPtr& chann)
 	onRespStopProxy(chann->id(), chann->dstEndpoint());
 }
 
-void CSession::onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, ChannelPtr& chann)
+void CSession::onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann)
 {
 	TagPktHdr hdr;
 	bzero(&hdr, sizeof(TagPktHdr));

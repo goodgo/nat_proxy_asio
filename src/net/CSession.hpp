@@ -68,7 +68,7 @@ public:
 	void closeSrcChannel(const ChannelPtr& chann);
 	void closeDstChannel(const ChannelPtr& chann);
 
-	void onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, ChannelPtr& chann);
+	void onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
 
 private:
 	void onTimeout(const boost::system::error_code& ec);
