@@ -37,9 +37,9 @@ int main(int argc, char* argv[])
 	{
 		initLog(gConfig->procName(),
 				gConfig->logPath(),
-				gConfig->logFileSize(),
-				gConfig->logLevel());
-		ServerPtr server(boost::make_shared<CServer>(gConfig->workerNum()));
+				gConfig->logRotationSize(),
+				gConfig->logPrintLevel());
+		ServerPtr server(boost::make_shared<CServer>(gConfig->IOWorkers()));
 		if (!server->start()) {
 			LOGF(ERR) << "server start failed!";
 			return 0;

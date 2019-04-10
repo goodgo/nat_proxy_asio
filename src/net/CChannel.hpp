@@ -43,10 +43,9 @@ class CChannel : public boost::enable_shared_from_this<CChannel>
 public:
 	CChannel(asio::io_context& io,
 			uint32_t id,
-			uint32_t rbuff_size = 1500,
-			uint32_t sbuff_size = 1500,
-			uint32_t recv_timeo = 30,
-			uint32_t display_interval = 60);
+			uint32_t mtu = 1500,
+			uint32_t port_expired = 0,
+			uint32_t display_interval = 0);
 	~CChannel();
 
 	bool init(const boost::shared_ptr<CSession>& src_ss,
@@ -81,16 +80,15 @@ private:
 	class CEnd
 	{
 	public:
-		CEnd(asio::io_context& io, uint32_t chann_id, std::string dir,
-			uint32_t rbuff_size, uint32_t sbuff_size, uint32_t recv_timeo);
+		CEnd(asio::io_context& io, uint32_t chann_id, std::string dir, uint32_t mtu, uint32_t port_expired);
 		~CEnd();
 		bool init(boost::shared_ptr<CSession> ss);
 		void stop();
 		inline void updateTime() {
-			if (_timeout > 0)
+			if (_port_expired > 0)
 				_endtime = boost::posix_time::second_clock::local_time();
 		}
-		void checkTimeout(asio::yield_context yield);
+		void portExpiredChecker(asio::yield_context yield);
 		bool opened() { return _opened; }
 		uint16_t localPort() { return _local_ep.port(); }
 		asio::ip::udp::socket::endpoint_type remote() { return _remote_ep; }
@@ -110,8 +108,7 @@ private:
 		uint32_t _owner_id;
 		std::vector<char> _buf;
 
-		uint32_t _timeout;
-		//boost::chrono::steady_clock::time_point _endtime;
+		uint32_t _port_expired;
 		boost::posix_time::ptime _endtime;
 		bool _opened;
 	};

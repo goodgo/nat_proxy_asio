@@ -127,9 +127,8 @@ ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId&
 	ChannelPtr chann = boost::make_shared<CChannel> (
 			boost::ref(server->getContext()),
 			allocChannelId(),
-			gConfig->channReceiveBuffSize(),
-			gConfig->channSendBuffSize(),
-			gConfig->channRecvTimeout(),
+			gConfig->channMTU(),
+			gConfig->channPortExpired(),
 			gConfig->channDisplayInterval()
 	);
 

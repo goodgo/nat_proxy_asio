@@ -69,7 +69,7 @@ bool CServer::init()
 
 	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, shared_from_this(), _1, _2));
 	_session_mgr = boost::make_shared<CSessionMgr>(shared_from_this(),
-												   gConfig->redisAddr(),
+												   gConfig->redisIP(),
 												   gConfig->redisPort());
 	_started = true;
 	return true;
@@ -102,7 +102,7 @@ bool CServer::start()
 
 	_session_mgr->start();
 
-	std::vector<std::string> ips = gConfig->srvAddrs();
+	std::vector<std::string> ips = gConfig->srvIPs();
 	for (size_t i = 0; i < ips.size(); i++) {
 		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(ips[i]), gConfig->listenPort());
 		asio::spawn(getContext(),
@@ -137,7 +137,7 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 	while(_started) {
 		SessionPtr ss = boost::make_shared<CSession>(_session_mgr,
 							 boost::ref(_io_context_pool.getIoContext()),
-							 gConfig->loginTimeout());
+							 gConfig->freeSessionExpired());
 
 		acceptor.async_accept(ss->socket(), yield[ec]);
 		if (ec) {
@@ -156,16 +156,16 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 			continue;
 		}
 
-		if (gConfig->connLimit() > 0 && _conn_num > gConfig->connLimit()) {
+		if (gConfig->maxSessions() > 0 && _conn_num > gConfig->maxSessions()) {
 			LOG(WARNING) << "acceptor[" << id << "] [CONN@" << conn_ep
-					<< "] exceed max connections: [" << gConfig->connLimit()
+					<< "] exceed max connections: [" << gConfig->maxSessions()
 					<< "] conn will be closed.";
 			continue;
 		}
 
 		_conn_num.fetch_add(1);
 		LOG(INFO) << "acceptor[" << id << "] <- [CONN@" << conn_ep << "] {"
-				<< _conn_num << "/" << gConfig->connLimit() << "}";
+				<< _conn_num << "/" << gConfig->maxSessions() << "}";
 		ss->start();
 	}
 	LOGF(ERR) << "acceptor[" << id << "] exit.";
@@ -175,5 +175,5 @@ void CServer::sessionClosed(const SessionPtr& ss)
 {
 	_conn_num.sub(1);
 	LOG(TRACE) << "server close connection [ID@" << ss->id() << "] {"
-			<< _conn_num << "/" << gConfig->connLimit() << "}";
+			<< _conn_num << "/" << gConfig->maxSessions() << "}";
 }

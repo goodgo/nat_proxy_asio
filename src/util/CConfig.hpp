@@ -39,24 +39,26 @@ public:
 
 			boost::property_tree::ini_parser::read_ini(_cfg_file, _cfg);
 
-			_log_file_size = _cfg.get<size_t>("log.file_size", 20);
-			_log_file_size = std::min<size_t>(_log_file_size, 100);
-			_log_level = _cfg.get<uint8_t>("log.log_level", 0);
-			_srv_addr = _cfg.get<std::string>("srv.addr", "0.0.0.0");
-			_listen_port = _cfg.get<uint16_t>("srv.listen_port", 10001);
-			_worker_num = _cfg.get<uint8_t>("srv.worker_num", 2);
-			_max_conn_num = _cfg.get<uint32_t>("srv.max_conn_num", 0);
-			_max_chann_num = _cfg.get<uint32_t>("srv.max_chann_num", 0);
-			_login_timeout = _cfg.get<uint32_t>("srv.login_timeout", 30);
-			if (!_daemon)
-				_daemon = 1 == _cfg.get<uint32_t>("srv.daemon", 0);
-			_redis_addr = _cfg.get<std::string>("redis.addr", "127.0.0.1");
-			_redis_port = _cfg.get<uint16_t>("redis.port", 6379);
+			_log_rotation_size = _cfg.get<size_t>("log.RotationSize", 100);
+			_log_rotation_size = std::min<size_t>(_log_rotation_size, 100);
+			_log_print_level = _cfg.get<uint8_t>("log.PrintLevel", 0);
 
-			_chann_rbuff_size = _cfg.get<uint32_t>("channel.rbuff_size", 1500);
-			_chann_sbuff_size = _cfg.get<uint32_t>("channel.sbuff_size", 1500);
-			_chann_recv_timeout = _cfg.get<uint32_t>("channel.recv_timeout", 0);
-			_chann_display_interval = _cfg.get<uint32_t>("channel.display_interval", 0);
+			_srv_ip = _cfg.get<std::string>("srv.IP", "0.0.0.0");
+			_srv_port = _cfg.get<uint16_t>("srv.ListenPort", 10001);
+			_srv_workers = _cfg.get<uint8_t>("srv.Workers", 2);
+			_srv_max_sessions = _cfg.get<uint32_t>("srv.MaxSessions", 0);
+			_srv_max_channels = _cfg.get<uint32_t>("srv.MaxChannels", 0);
+			_srv_per_session_max_channels = _cfg.get<uint32_t>("srv.PerSessionMaxChannels", 0);
+			_srv_free_session_expired = _cfg.get<uint32_t>("srv.FreeSessionExpired", 10);
+			if (!_daemon)
+				_daemon = 1 == _cfg.get<uint32_t>("srv.Daemon", 0);
+
+			_rds_ip = _cfg.get<std::string>("redis.IP", "127.0.0.1");
+			_rds_port = _cfg.get<uint16_t>("redis.Port", 6379);
+
+			_chann_mtu = _cfg.get<uint32_t>("channel.MTU", 1500);
+			_chann_port_expired = _cfg.get<uint32_t>("channel.PortExpired", 30);
+			_chann_display_interval = _cfg.get<uint32_t>("channel.DisplayInterval", 0);
 
 			loadLocalIp(_srv_ips);
 			//print();
@@ -72,22 +74,25 @@ public:
 	/////////////////////////////////////////////////////////////////////
 	std::string procName() const { return _proc_name; }
 	std::string logPath() const { return _log_path; }
-	size_t logFileSize() const { return _log_file_size; }
-	uint8_t logLevel() const { return _log_level; }
-	std::string srvAddr() const { return _srv_addr; }
-	std::vector<std::string> srvAddrs() const { return _srv_ips; }
-	uint16_t listenPort() const { return _listen_port; }
-	uint8_t workerNum() const { return _worker_num; }
-	uint32_t connLimit() const { return _max_conn_num; }
-	uint32_t channLimit() const { return _max_chann_num; }
-	std::string redisAddr() const { return _redis_addr; }
-	uint16_t redisPort() const { return _redis_port; }
-	uint32_t loginTimeout() const { return _login_timeout; }
-	uint32_t channReceiveBuffSize() const { return _chann_rbuff_size; }
-	uint32_t channSendBuffSize() const { return _chann_sbuff_size; }
-	uint32_t channRecvTimeout() const { return _chann_recv_timeout; }
-	uint32_t channDisplayInterval() const { return _chann_display_interval; }
+	size_t logRotationSize() const { return _log_rotation_size; }
+	uint8_t logPrintLevel() const { return _log_print_level; }
+
 	bool daemon() const { return _daemon; }
+	std::string srvIP() const { return _srv_ip; }
+	std::vector<std::string> srvIPs() const { return _srv_ips; }
+	uint16_t listenPort() const { return _srv_port; }
+	uint8_t IOWorkers() const { return _srv_workers; }
+	uint32_t maxSessions() const { return _srv_max_sessions; }
+	uint32_t maxChannels() const { return _srv_max_channels; }
+	uint32_t perSessionMaxChannels() const { return _srv_per_session_max_channels; }
+	uint32_t freeSessionExpired() const { return _srv_free_session_expired; }
+
+	std::string redisIP() const { return _rds_ip; }
+	uint16_t redisPort() const { return _rds_port; }
+
+	uint32_t channMTU() const { return _chann_mtu; }
+	uint32_t channPortExpired() const { return _chann_port_expired; }
+	uint32_t channDisplayInterval() const { return _chann_display_interval; }
 
 	/////////////////////////////////////////////////////////////////////
 	std::string print()
@@ -95,19 +100,19 @@ public:
 		std::stringstream ss;
 		ss << "[config file: " << _cfg_file
 			<< "][log path: " << logPath()
-			<< "][log file size: " << logFileSize()
-			<< "][log level: " << (int)logLevel()
-			<< "][server addr: " << srvAddr()
+			<< "][log rotation size: " << logRotationSize()
+			<< "][log level: " << (int)logPrintLevel()
+			<< "][server ip: " << srvIP()
 			<< "][listen port: " << listenPort()
-			<< "][worker num: " << (int)workerNum()
-			<< "][max conn num: " << connLimit()
-			<< "][max chann num: " << channLimit()
-			<< "][login timeout: " << loginTimeout()
-			<< "][redis addr: " << redisAddr()
+			<< "][workers: " << (int)IOWorkers()
+			<< "][max sessions: " << maxSessions()
+			<< "][max channels: " << maxChannels()
+			<< "][per session max channels: " << perSessionMaxChannels()
+			<< "][free session expired: " << freeSessionExpired()
+			<< "][redis addr: " << redisIP()
 			<< "][redis port: " << redisPort()
-			<< "][channel receive buffer size: " << channReceiveBuffSize()
-			<< "][channel send buffer size: " << channSendBuffSize()
-			<< "][channel receive timeout: " << channRecvTimeout()
+			<< "][channel mtu: " << channMTU()
+			<< "][channel port expired: " << channPortExpired()
 			<< "][channel display interval: " << channDisplayInterval()
 			<< "][is daemon: " << std::boolalpha << daemon()
 			<< "]";
@@ -187,45 +192,50 @@ protected:
 	: _proc_name("")
 	, _cfg_file("/usr/local/etc/")
 	, _log_path("/usr/local/log/")
-	, _log_file_size(0)
-	, _log_level(0)
-	, _srv_ips()
-	, _listen_port(0)
-	, _worker_num(0)
-	, _max_conn_num(0)
-	, _max_chann_num(0)
-	, _login_timeout(0)
-	, _redis_addr("")
-	, _redis_port(0)
-	, _chann_rbuff_size(1500)
-	, _chann_sbuff_size(1500)
-	, _chann_recv_timeout(0)
-	, _chann_display_interval(0)
+	, _log_rotation_size(0)
+	, _log_print_level(0)
 	, _daemon(false)
+	, _srv_ips()
+	, _srv_ip("")
+	, _srv_port(0)
+	, _srv_workers(0)
+	, _srv_max_sessions(0)
+	, _srv_max_channels(0)
+	, _srv_per_session_max_channels(0)
+	, _srv_free_session_expired(0)
+	, _rds_ip("")
+	, _rds_port(0)
+	, _chann_mtu(1500)
+	, _chann_port_expired(0)
+	, _chann_display_interval(0)
 	{}
 
 private:
 	boost::property_tree::ptree _cfg;
 
-	std::string _proc_name;
-	std::string _cfg_file;
-	std::string _log_path;
-	size_t  	_log_file_size;//M
-	uint8_t 	_log_level;
-	std::vector<std::string> _srv_ips;
-	std::string _srv_addr;
-	uint16_t 	_listen_port;
-	uint8_t		_worker_num;
-	uint32_t 	_max_conn_num;
-	uint32_t 	_max_chann_num;
-	uint32_t 	_login_timeout;
-	std::string _redis_addr;
-	uint16_t 	_redis_port;
-	uint32_t 	_chann_rbuff_size;
-	uint32_t	_chann_sbuff_size;
-	uint32_t	_chann_recv_timeout;
-	uint32_t 	_chann_display_interval;
+	std::string _proc_name; // 进程名称
+	std::string _cfg_file; // 配置文件 (绝对路径)
+
+	std::string _log_path; // 日志路径
+	size_t  	_log_rotation_size;// 日志旋转大小(MB)
+	uint8_t 	_log_print_level; // 日志输出等级
+
 	bool		_daemon;
+	std::vector<std::string> _srv_ips; // 所有网卡IP
+	std::string _srv_ip; // 指定绑定IP
+	uint16_t 	_srv_port; // 监听端口
+	uint8_t		_srv_workers; // IO线程数
+	uint32_t 	_srv_max_sessions; // 最大用户数 (0 未限制)
+	uint32_t 	_srv_max_channels; // 最大通道数 (0 未限制)
+	uint32_t	_srv_per_session_max_channels; // 每用户最大通道数 (0 未限制)
+	uint32_t 	_srv_free_session_expired; // 未登陆用户过期时间(秒)
+
+	std::string _rds_ip; // redis ip
+	uint16_t 	_rds_port; // redis port
+
+	uint32_t	_chann_mtu; // 通道MTU
+	uint32_t	_chann_port_expired; // 通道端口过期时间(秒)
+	uint32_t 	_chann_display_interval; // 通道信息输出间隔(秒)
 };
 
 #define gConfig (CConfig::getInstance())

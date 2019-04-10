@@ -15,20 +15,20 @@
 #include "util/util.hpp"
 
 CChannel::CEnd::CEnd(asio::io_context& io, uint32_t chann_id, std::string dir,
-		uint32_t rbuff_size, uint32_t sbuff_size, uint32_t recv_timeo)
+		uint32_t mtu, uint32_t port_expired)
 : _strand(io)
 , _id(chann_id)
 , _dir(dir)
 , _socket(io, asio::ip::udp::v4())
 , _owner_id(0)
-, _buf(rbuff_size)
-, _timeout(recv_timeo)
+, _buf(mtu)
+, _port_expired(port_expired)
 , _endtime()
 , _opened(false)
 {
 	_socket.set_option(asio::ip::udp::socket::reuse_address(true));
-	_socket.set_option(asio::ip::udp::socket::send_buffer_size(sbuff_size));
-	_socket.set_option(asio::ip::udp::socket::receive_buffer_size(rbuff_size));
+	_socket.set_option(asio::ip::udp::socket::send_buffer_size(mtu));
+	_socket.set_option(asio::ip::udp::socket::receive_buffer_size(mtu));
 
 	updateTime();
 }
@@ -69,12 +69,12 @@ bool CChannel::CEnd::init(SessionPtr ss)
 	}
 	_remote_ep.address(ep.address());
 
-	if (_timeout > 0)
-		asio::spawn(_strand, boost::bind(&CChannel::CEnd::checkTimeout, this, boost::placeholders::_1));
+	if (_port_expired > 0)
+		asio::spawn(_strand, boost::bind(&CChannel::CEnd::portExpiredChecker, this, boost::placeholders::_1));
 	return true;
 }
 
-void CChannel::CEnd::checkTimeout(asio::yield_context yield)
+void CChannel::CEnd::portExpiredChecker(asio::yield_context yield)
 {
 	using namespace boost::chrono;
 
@@ -84,9 +84,9 @@ void CChannel::CEnd::checkTimeout(asio::yield_context yield)
 
 	while(_socket.is_open()) {
 		td = boost::posix_time::second_clock::local_time() - _endtime;
-		if (td.total_seconds() >= _timeout) {
-			LOGF(ERR) << "channel[" << _id <<  "] " << _dir << " timeout["
-					<< td.total_seconds() << "] last update: " << _endtime;
+		if (td.total_seconds() >= _port_expired) {
+			LOGF(ERR) << "channel[" << _id <<  "] " << _dir << " expired["
+					<< td.total_seconds() << "] last trans time: " << _endtime;
 			stop();
 			break;
 		}
@@ -103,13 +103,12 @@ void CChannel::CEnd::checkTimeout(asio::yield_context yield)
 
 CChannel::CChannel(asio::io_context& io,
 		uint32_t id,
-		uint32_t rbuff_size,
-		uint32_t sbuff_size,
-		uint32_t recv_timeo,
+		uint32_t mtu,
+		uint32_t port_expired,
 		uint32_t display_interval)
 : _id(id)
-, _src_end(io, id, "src", rbuff_size, sbuff_size, recv_timeo)
-, _dst_end(io, id, "dst", rbuff_size, sbuff_size, recv_timeo)
+, _src_end(io, id, "src", mtu, port_expired)
+, _dst_end(io, id, "dst", mtu, port_expired)
 , _strand(io)
 , _up_bytes(0)
 , _up_packs(0)
