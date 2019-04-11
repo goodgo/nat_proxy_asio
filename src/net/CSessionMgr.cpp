@@ -11,9 +11,9 @@
 #include "util/CLogger.hpp"
 #include "util/CConfig.hpp"
 
-CSessionMgr::CSessionMgr(ServerPtr server, std::string addr, uint16_t port)
+CSessionMgr::CSessionMgr(ServerPtr server, std::string rds_addr, uint16_t rds_port, std::string rds_passwd)
 : _server(server)
-, _ss_db(boost::ref(server->getContext()), addr, port)
+, _ss_db(boost::ref(server->getContext()), rds_addr, rds_port, rds_passwd)
 , _session_id(1000)
 , _channel_id(1)
 {

@@ -70,7 +70,8 @@ bool CServer::init()
 	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, shared_from_this(), _1, _2));
 	_session_mgr = boost::make_shared<CSessionMgr>(shared_from_this(),
 												   gConfig->redisIP(),
-												   gConfig->redisPort());
+												   gConfig->redisPort(),
+												   gConfig->redisPasswd());
 	_started = true;
 	return true;
 }
@@ -133,7 +134,7 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 
 	acceptor.listen();
 
-	LOG(INFO) << "acceptor[" << id << "] listenning...[" << listen_ep << "]";
+	LOG(INFO) << "acceptor[" << id << "] ["<< listen_ep << "] listenning...";
 	while(_started) {
 		SessionPtr ss = boost::make_shared<CSession>(_session_mgr,
 							 boost::ref(_io_context_pool.getIoContext()),

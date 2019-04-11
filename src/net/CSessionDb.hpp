@@ -38,6 +38,7 @@ const std::string kRedisFieldSessionId = "ID";
 const std::string kRedisFieldSessionAddr = "ADDR";
 const std::string kRedisFieldSessionGuid = "GUID";
 
+const std::string kRedisAUTH = "AUTH";
 const std::string kRedisSET = "SET";
 const std::string kRedisGET = "GET";
 const std::string kRedisLPUSH = "LPUSH";
@@ -53,7 +54,7 @@ public:
 	typedef std::deque<OperationItem> OperationStack;
 	typedef boost::shared_ptr<std::string> OutBuff;
 
-	CSessionDb(boost::asio::io_context& io_context, std::string addr, uint16_t port);
+	CSessionDb(boost::asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd);
 	~CSessionDb();
 	void stop();
 	void start();
@@ -67,6 +68,7 @@ private:
 	void operate();
 	void serial();
 	void onRedisConnected(bool ok, const std::string& errmsg);
+	void onRedisAuth(const RedisValue &result);
 	void onRedisSetSessionCompleted(uint32_t id, const RedisValue &result);
 	void onRedisDelSessionCompleted(uint32_t id, const RedisValue &result);
 
@@ -74,6 +76,7 @@ public:
 	RedisAsyncClient _redis;
 	std::string _redis_addr;
 	uint16_t _redis_port;
+	std::string _redis_passwd;
 	boost::shared_ptr<boost::thread> _thread;
 	DbMap _db;
 	boost::mutex _op_mutex;

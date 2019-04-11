@@ -55,6 +55,7 @@ public:
 
 			_rds_ip = _cfg.get<std::string>("redis.IP", "127.0.0.1");
 			_rds_port = _cfg.get<uint16_t>("redis.Port", 6379);
+			_rds_passwd = _cfg.get<std::string>("redis.Passwd", "");
 
 			_chann_mtu = _cfg.get<uint32_t>("channel.MTU", 1500);
 			_chann_port_expired = _cfg.get<uint32_t>("channel.PortExpired", 30);
@@ -89,6 +90,7 @@ public:
 
 	std::string redisIP() const { return _rds_ip; }
 	uint16_t redisPort() const { return _rds_port; }
+	std::string redisPasswd() const { return _rds_passwd; }
 
 	uint32_t channMTU() const { return _chann_mtu; }
 	uint32_t channPortExpired() const { return _chann_port_expired; }
@@ -232,6 +234,7 @@ private:
 
 	std::string _rds_ip; // redis ip
 	uint16_t 	_rds_port; // redis port
+	std::string _rds_passwd; // redis 密码
 
 	uint32_t	_chann_mtu; // 通道MTU
 	uint32_t	_chann_port_expired; // 通道端口过期时间(秒)

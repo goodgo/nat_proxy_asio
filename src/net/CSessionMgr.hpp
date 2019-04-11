@@ -26,7 +26,7 @@ public:
 	typedef SessionMap::iterator Iterator;
 	typedef std::map<uint32_t, std::string> FuncNameMap;
 
-	CSessionMgr(boost::shared_ptr<CServer> server, std::string addr, uint16_t port);
+	CSessionMgr(boost::shared_ptr<CServer> server, std::string rds_addr, uint16_t rds_port, std::string rds_passwd);
 	~CSessionMgr();
 
 	bool init();

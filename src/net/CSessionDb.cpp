@@ -10,10 +10,11 @@
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
-CSessionDb::CSessionDb(boost::asio::io_context& io_context, std::string addr, uint16_t port)
+CSessionDb::CSessionDb(boost::asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd)
 : _redis(io_context)
 , _redis_addr(addr)
 , _redis_port(port)
+, _redis_passwd(passwd)
 , _thread()
 , _out_buff(boost::make_shared<std::string>(""))
 , _buff_len(0)
@@ -197,7 +198,16 @@ CSessionDb::OutBuff CSessionDb::output()
 
 void CSessionDb::onRedisConnected(bool ok, const std::string& errmsg)
 {
-	LOG(INFO) << "redis connect: " << (ok ? "ok" : "failed!");
+	if (!ok)
+		LOG(ERR) << "redis connect error: " << errmsg;
+	else
+		_redis.command(kRedisAUTH, _redis_passwd,
+				boost::bind(&CSessionDb::onRedisAuth, this, _1));
+}
+
+void CSessionDb::onRedisAuth(const RedisValue &result)
+{
+	LOG(INFO) << "redis authenticated: " << result.inspect();
 }
 
 void CSessionDb::onRedisSetSessionCompleted(uint32_t id, const RedisValue &result)
