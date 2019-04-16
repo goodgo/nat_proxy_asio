@@ -84,7 +84,7 @@ namespace util {
 	void printBacktrace(int sig)
 	{
 		std::stringstream filename;
-		filename << "/tmp/nat_proxy_asio_" << gettid() << ".coredump";
+		filename << "/tmp/natproxy_" << gettid() << ".coredump";
 
 		std::ofstream outfile;
 		outfile.open(filename.str().c_str());

@@ -15,6 +15,7 @@
 #include <atomic>
 #include <memory>
 
+#include <boost/asio/spawn.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -41,16 +42,20 @@ class CSession : public std::enable_shared_from_this<CSession>
 public:
 	typedef std::deque<StringPtr> MsgQue;
 
+	static std::shared_ptr<CSession> newSession(std::shared_ptr<CSessionMgr>& mgr,
+			asio::io_context& io_context,
+			uint32_t timeout);
+
 	CSession(std::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout);
 	CSession(const CSession&) = delete;
 	CSession& operator=(const CSession&) = delete;
 	~CSession();
 
-	static std::shared_ptr<CSession> newSession();
 	void start();
 	void toStop();
 	void stop();
 	bool isRuning() { return _started; }
+	void reader(asio::yield_context yield);
 
 	void doRead();
 	void doWrite(const StringPtr& msg);
@@ -72,7 +77,6 @@ public:
 	void onRespAccess(const std::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
 
 private:
-	void onTimeout(const boost::system::error_code& ec);
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
 	bool checkHead();

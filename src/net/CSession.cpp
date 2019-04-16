@@ -36,6 +36,11 @@ CSession::~CSession()
 	LOGF(TRACE) << "session[" << _id << "].";
 }
 
+std::shared_ptr<CSession> CSession::newSession(std::shared_ptr<CSessionMgr>& mgr, asio::io_context& io_context, uint32_t timeout)
+{
+	return std::make_shared<CSession>(mgr, io_context, timeout);
+}
+
 void CSession::stop()
 {
 	boost::system::error_code ignored_ec;
@@ -62,23 +67,113 @@ void CSession::start()
 {
 	if (!_started) {
 		_started = true;
-		_timer.expires_from_now(std::chrono::seconds(_timeout));
-		_timer.async_wait(
-				std::bind(&CSession::onTimeout,
-							shared_from_this(),
-							std::placeholders::_1));
 
 		_socket.set_option(asio::ip::tcp::no_delay(true));
-		doRead();
+		asio::spawn(_strand, std::bind(&CSession::reader, shared_from_this(), std::placeholders::_1));
+
+		auto self = shared_from_this();
+		_timer.expires_from_now(std::chrono::seconds(_timeout));
+		_timer.async_wait([self](const boost::system::error_code& ec){
+			if (!ec)
+				self->stop();
+		});
 	}
 }
 
-void CSession::onTimeout(const boost::system::error_code& ec)
+void CSession::reader(asio::yield_context yield)
 {
-	if (!ec)
-		stop();
+	boost::system::error_code ec;
+	while (_started) {
+		size_t bytes = asio::async_read(_socket, _rbuf, asio::transfer_exactly(sizeof(TagPktHdr)), yield[ec]);
+		if (ec || 0 == bytes) {
+			LOG(ERR) << "session[" << _id << "] read head error: " << ec.message();
+			stop();
+			break;
+		}
+
+		if (!checkHead()) {
+			stop();
+			break;
+		}
+
+		bytes = asio::async_read(_socket, _rbuf, asio::transfer_exactly(_hdr.usBodyLen), yield[ec]);
+		if (ec || 0 == bytes) {
+			LOGF(ERR) << "session[" << _id << "] read body error: " << ec.message();;
+			stop();
+			break;
+		}
+
+		auto pbuf = asio::buffer_cast<const char*>(_rbuf.data());
+		const size_t nmax = _rbuf.size();
+
+		LOG(TRACE) << "session[" << _id << "] read(#REQ_" << _mgr->getFuncName(_hdr.ucFunc) << "#): "
+				<< util::to_hex(pbuf, sizeof(_hdr) + _hdr.usBodyLen);
+
+		switch (_hdr.ucFunc) {
+		case FUNC::REQ::HEARTBEAT:
+			break;
+		case FUNC::REQ::LOGIN: {
+			std::shared_ptr<CReqLoginPkt> pkt = std::make_shared<CReqLoginPkt>();
+			pkt->deserialize(pbuf, nmax);
+			onReqLogin(pkt);
+		}break;
+		case FUNC::REQ::PROXY: {
+			if (_session_type == SESSIONTYPE::CLIENT || _session_type == SESSIONTYPE::ANYONE) {
+				std::shared_ptr<CReqProxyPkt> pkt = std::make_shared<CReqProxyPkt>();
+				pkt->deserialize(pbuf, nmax);
+				onReqProxy(pkt);
+			}
+		}break;
+		case FUNC::REQ::GETPROXIES: {
+			if (_session_type == SESSIONTYPE::CLIENT || _session_type == SESSIONTYPE::ANYONE) {
+				std::shared_ptr<CReqGetProxiesPkt> pkt = std::make_shared<CReqGetProxiesPkt>();
+				pkt->deserialize(pbuf, nmax);
+				onReqGetProxies(pkt);
+			}
+		}break;
+		default:
+			break;
+		}
+
+		_rbuf.consume(sizeof(_hdr) + _hdr.usBodyLen);
+	}
+
+	LOG(INFO) << "session[" << _id << "] reader exit!";
 }
 
+void CSession::doWrite(const StringPtr& pkt)
+{
+	if (pkt->length() <= 0)
+		return;
+
+	auto self = shared_from_this();
+	_strand.post([self, pkt](){
+		self->_sque.push_back(pkt);
+		if (self->_sque.size() > 1) {
+			LOGF(TRACE) << "session[" << self->_id << "] queue size " << self->_sque.size() << " > 1 return.";
+			return;
+		}
+
+		while (self->_sque.size() > 0) {
+			const auto& pkt0 = self->_sque[0];
+			asio::async_write(self->_socket, asio::buffer(pkt0->c_str(), pkt0->length()),
+					self->_strand.wrap([self, &pkt0](const boost::system::error_code& ec, const size_t bytes){
+						LOG(TRACE) << "session[" << self->_id << "] write(#RESP_" << self->_mgr->getFuncName((*pkt0)[4]) << "#): "
+								<< util::to_hex(*pkt0);
+
+						self->_sque.pop_front();
+						if (ec) {
+							LOGF(ERR) << "session[" << self->_id << "] write failed(" << bytes << "B): [" << util::to_hex(*pkt0)
+									<< "] [error: " << ec.message() << "]";
+							return;
+						}
+					})
+			);
+		}
+	});
+}
+
+/*
 void CSession::doRead()
 {
 	if (_started)
@@ -95,19 +190,6 @@ void CSession::doRead()
 						std::placeholders::_2))
 		);
 	}
-}
-
-void CSession::doWrite(const StringPtr& msg)
-{
-	if (msg->length() <= 0)
-		return;
-
-	_strand.post(
-			std::bind(
-					&CSession::writeImpl,
-					shared_from_this(),
-					msg)
-	);
 }
 
 void CSession::onReadHead(const boost::system::error_code& ec, const size_t bytes)
@@ -179,6 +261,21 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 	_rbuf.consume(sizeof(_hdr) + _hdr.usBodyLen);
 	doRead();
 }
+*/
+
+/*
+void CSession::doWrite(const StringPtr& msg)
+{
+	if (msg->length() <= 0)
+		return;
+
+	_strand.post(
+			std::bind(
+					&CSession::writeImpl,
+					shared_from_this(),
+					msg)
+	);
+}
 
 void CSession::writeImpl(const StringPtr& msg)
 {
@@ -198,14 +295,11 @@ void CSession::write()
 			_socket,
 			asio::buffer(msg->c_str(), msg->length()),
 			_strand.wrap(
-					std::bind(
-							&CSession::onWriteComplete,
+					std::bind(&CSession::onWriteComplete,
 							shared_from_this(),
 							std::placeholders::_1,
 							std::placeholders::_2
-					)
-			)
-	);
+	)));
 }
 
 void CSession::onWriteComplete(const boost::system::error_code& ec, const size_t bytes)
@@ -224,6 +318,7 @@ void CSession::onWriteComplete(const boost::system::error_code& ec, const size_t
 	if (!_sque.empty())
 		write();
 }
+*/
 
 bool CSession::checkHead()
 {
@@ -277,7 +372,7 @@ void CSession::onReqLogin(const std::shared_ptr<CReqLoginPkt>& req)
 		LOGF(INFO) << "session[" << _id << "] <" << guid() << "> login repeat.";
 	}
 
-	StringPtr msg = resp.serialize(req->header);
+	auto msg = resp.serialize(req->header);
 	doWrite(msg);
 }
 
@@ -285,14 +380,14 @@ void CSession::onReqProxy(const std::shared_ptr<CReqProxyPkt>& req)
 {
 	LOGF(INFO) << "session[" << _id << "] request proxy destination[" << req->uiDstId << "]";
 
-	ChannelPtr chann = _mgr->createChannel(shared_from_this(), req->uiDstId);
+	auto chann = _mgr->createChannel(shared_from_this(), req->uiDstId);
 	if (!chann) {
 		LOGF(ERR) << "session[" << _id << "] request proxy destination[" << req->uiDstId << "] no found.";
 		onRespProxyErr(req, ERRCODE::CREATE_UDP_FAILED);
 		return;
 	}
 
-	SessionPtr dst_ss = chann->getDstSession().lock();
+	auto dst_ss = chann->getDstSession().lock();
 	if (!dst_ss) {
 		LOGF(ERR) << "session[" << req->uiDstId << "] invalid!";
 		return;
@@ -378,7 +473,7 @@ void CSession::onRespAccess(const std::shared_ptr<CReqProxyPkt>& req, const Chan
 	resp_dst.udpPort(asio::detail::socket_ops::host_to_network_short(chann->dstEndpoint().port()));
 	resp_dst.privateAddr(_private_addr);
 
-	StringPtr msg = resp_dst.serialize(hdr);
+	auto msg = resp_dst.serialize(hdr);
 	doWrite(msg);
 }
 
@@ -390,7 +485,7 @@ void CSession::onRespProxyOk(const std::shared_ptr<CReqProxyPkt>& req, const Cha
 	resp.udpAddr(chann->srcEndpoint().address().to_v4().to_uint());
 	resp.udpPort(asio::detail::socket_ops::host_to_network_short(chann->srcEndpoint().port()));
 
-	StringPtr msg = resp.serialize(req->header);
+	auto msg = resp.serialize(req->header);
 	doWrite(msg);
 }
 
@@ -402,7 +497,7 @@ void CSession::onRespProxyErr(const std::shared_ptr<CReqProxyPkt>& req, uint8_t 
 	resp.udpAddr(0);
 	resp.udpPort(0);
 
-	StringPtr msg = resp.serialize(req->header);
+	auto msg = resp.serialize(req->header);
 	doWrite(msg);
 }
 
@@ -421,6 +516,6 @@ void CSession::onRespStopProxy(uint32_t id, const asio::ip::udp::endpoint& ep)
 	hdr.ucFunc = FUNC::RESP::STOPPROXY;
 	hdr.ucKeyIndex = 0x00;
 
-	StringPtr msg = resp.serialize(hdr);
+	auto msg = resp.serialize(hdr);
 	doWrite(msg);
 }

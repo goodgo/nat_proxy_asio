@@ -11,13 +11,13 @@
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 
 #include <boost/system/error_code.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/placeholders.hpp>
 
 #include "CIoContextPool.hpp"
 #include "CSessionMgr.hpp"
@@ -31,8 +31,6 @@ namespace asio {
 	using namespace boost::asio;
 }
 
-typedef std::shared_ptr<CServer> ServerPtr;
-typedef std::weak_ptr<CServer> ServerWptr;
 class CServer : private std::enable_shared_from_this<CServer>
 {
 public:
@@ -55,5 +53,8 @@ private:
 	std::atomic<uint32_t> _conn_num;
 	bool _started;
 };
+
+typedef std::shared_ptr<CServer> ServerPtr;
+typedef std::weak_ptr<CServer> ServerWptr;
 
 #endif /* SRC_NET_CSERVER_HPP_ */

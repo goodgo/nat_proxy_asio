@@ -46,7 +46,7 @@ void CChannel::CEnd::stop()
 bool CChannel::CEnd::init(SessionPtr ss)
 {
 	boost::system::error_code ec;
-	asio::ip::tcp::endpoint ep = ss->socket().local_endpoint(ec);
+	auto ep = ss->socket().local_endpoint(ec);
 	if (ec) {
 		LOG(ERR) << "channel[" << _id << "] " << _dir << " get local endpoint error: " << ec.message();
 		return false;
@@ -163,7 +163,7 @@ void CChannel::stop()
 	if (_started) {
 		_started = false;
 
-		SessionPtr ss = _src_end.session().lock();
+		auto ss = _src_end.session().lock();
 		if (ss) {
 			ss->closeSrcChannel(shared_from_this());
 		}
@@ -178,8 +178,8 @@ void CChannel::stop()
 		boost::system::error_code ignored_ec;
 		_display_timer.cancel(ignored_ec);
 
-		boost::posix_time::time_duration td =
-				boost::posix_time::second_clock::local_time() - _start_pt;
+		//boost::posix_time::time_duration
+		auto td = boost::posix_time::second_clock::local_time() - _start_pt;
 
 		LOG(INFO) << "channel[" << _id << "] closed. takes time: {"
 				<< td.hours() << "h:" << td.minutes() << "m:" << td.seconds() << "s}"
@@ -201,14 +201,11 @@ void CChannel::start()
 				<< " --> " << _dst_end.remote()
 				<< "]("    << _dst_end.sessionId() << ") opened.";
 
-		asio::spawn(_src_end._strand, std::bind(
-				&CChannel::uploader, shared_from_this(), std::placeholders::_1));
-		asio::spawn(_dst_end._strand, std::bind(
-				&CChannel::downloader, shared_from_this(), std::placeholders::_1));
+		asio::spawn(_src_end._strand, std::bind(&CChannel::uploader, shared_from_this(), std::placeholders::_1));
+		asio::spawn(_dst_end._strand, std::bind(&CChannel::downloader, shared_from_this(), std::placeholders::_1));
 
 		if (_display_interval > 0)
-			asio::spawn(_strand, std::bind(
-					&CChannel::displayer, shared_from_this(), std::placeholders::_1));
+			asio::spawn(_strand, std::bind(&CChannel::displayer, shared_from_this(), std::placeholders::_1));
 	}
 }
 

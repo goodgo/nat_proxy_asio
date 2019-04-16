@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <algorithm>
 
-#include <boost/noncopyable.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <boost/asio/io_context.hpp>

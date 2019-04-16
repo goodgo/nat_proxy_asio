@@ -63,15 +63,14 @@
 								<option id="gnu.cpp.link.option.userobjs.584351823" name="Other objects" superClass="gnu.cpp.link.option.userobjs" valueType="userObjs">
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/gperftools/lib/libtcmalloc_minimal.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_coroutine.a"/>
-									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_thread.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_context.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_system.a"/>
-									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_chrono.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_log_setup.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_log.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_regex.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_filesystem.a"/>
 									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_program_options.a"/>
+									<listOptionValue builtIn="false" value="/opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_thread.a"/>
 								</option>
 								<option id="gnu.cpp.link.option.strip.2143184692" name="Omit all symbol information (-s)" superClass="gnu.cpp.link.option.strip" value="false" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.10001882" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">

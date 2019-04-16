@@ -63,16 +63,20 @@ bool CServer::init()
 	_signal_sets.add(SIGQUIT);
 #endif
 
-	_signal_sets.async_wait(
-			std::bind(&CServer::signalHandle,
-					shared_from_this(),
-					std::placeholders::_1,
-					std::placeholders::_2));
+	ServerPtr self = shared_from_this();
+	if (self) {
+		LOG(ERR) << "server shared from this failed.";
+		return false;
+	}
+	_signal_sets.async_wait([self](const boost::system::error_code& ec, int sig){
+		LOGF(ERR) << "server catch signal: " << sig << ", error: " << ec.message();
+		self->stop();
+	});
 
 	_session_mgr = std::make_shared<CSessionMgr>(shared_from_this(),
-												   gConfig->redisIP(),
-												   gConfig->redisPort(),
-												   gConfig->redisPasswd());
+											   gConfig->redisIP(),
+											   gConfig->redisPort(),
+											   gConfig->redisPasswd());
 	_started = true;
 	return true;
 }
@@ -137,7 +141,7 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 
 	LOG(INFO) << "acceptor[" << id << "] ["<< listen_ep << "] listenning...";
 	while(_started) {
-		SessionPtr ss = std::make_shared<CSession>(_session_mgr,
+		auto ss = CSession::newSession(_session_mgr,
 							 std::ref(_io_context_pool.getIoContext()),
 							 gConfig->freeSessionExpired());
 
@@ -152,7 +156,7 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 			continue;
 		}
 
-		const asio::ip::tcp::endpoint& conn_ep = ss->socket().remote_endpoint(ec);
+		const auto& conn_ep = ss->socket().remote_endpoint(ec);
 		if (ec) {
 			LOGF(ERR) << "acceptor[" << id << "] socket get remote endpoint error: " << ec.message();
 			continue;

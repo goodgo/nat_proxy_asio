@@ -4,10 +4,9 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <unordered_map>
-
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include "CSession.hpp"
 #include "CChannel.hpp"

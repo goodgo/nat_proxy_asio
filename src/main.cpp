@@ -41,7 +41,11 @@ int main(int argc, char* argv[])
 				gConfig->logPath(),
 				gConfig->logRotationSize(),
 				gConfig->logPrintLevel());
-		auto server = std::make_shared<CServer>(gConfig->IOWorkers());
+		ServerPtr server(std::make_shared<CServer>(gConfig->IOWorkers()));
+		if (!server) {
+			LOGF(ERR) << "server create failed!";
+			return 0;
+		}
 		if (!server->start()) {
 			LOGF(ERR) << "server start failed!";
 			return 0;

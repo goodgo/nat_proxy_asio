@@ -32,13 +32,11 @@ CIoContextPool::~CIoContextPool()
 
 void CIoContextPool::run()
 {
-	std::vector<std::shared_ptr<std::thread> > threads;
+	std::vector<std::shared_ptr<std::thread>> threads;
 	for (size_t i = 0; i < _io_contexts.size(); i++) {
 		auto t = std::make_shared<std::thread>(
-						std::bind(
-								&CIoContextPool::startThread,
-								this,
-								std::ref(_io_contexts[i])
+						std::bind(&CIoContextPool::startThread,
+								this, std::ref(_io_contexts[i])
 						)
 		);
 		threads.push_back(t);
