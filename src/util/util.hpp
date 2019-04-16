@@ -13,11 +13,10 @@
 #include <iomanip>
 #include <sstream>
 #include <iostream>
-#include <boost/chrono.hpp>
+#include <cstdint>
 
 extern "C"
 {
-#include <stdint.h>
 #include <sys/syscall.h>
 }
 #define gettid() syscall(SYS_gettid)
@@ -41,7 +40,6 @@ namespace util {
 	std::string formatBytes(const uint64_t& bytes);
 
 	void printBacktrace(int sig);
-	inline time_t steady_clock_to_time_t( boost::chrono::steady_clock::time_point t);
 }
 
 template <typename T>
@@ -71,12 +69,6 @@ template<typename T, std::size_t N>
 std::string util::to_hex(T(&arr)[N])
 {
 	return util::to_hex(arr, N);
-}
-
-time_t util::steady_clock_to_time_t( boost::chrono::steady_clock::time_point t )
-{
-	using namespace boost::chrono;
-    return system_clock::to_time_t(system_clock::now() + (t - steady_clock::now()));
 }
 
 #endif /* SRC_UTIL_UTIL_HPP_ */

@@ -8,14 +8,13 @@
 #ifndef SRC_NET_CPROTOCOL_HPP_
 #define SRC_NET_CPROTOCOL_HPP_
 
+#include <cstdint>
+#include <sstream>
+#include <memory>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <boost/cstdint.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/unordered/unordered_map.hpp>
-#include <boost/unordered/unordered_set.hpp>
+#include <unordered_map>
+#include <unordered_set>
 
 // 包头定义
 typedef struct
@@ -166,14 +165,14 @@ public:
 };
 
 /////////////////////////////////////////////////////////////////
-typedef boost::shared_ptr<std::string> StringPtr;
+typedef std::shared_ptr<std::string> StringPtr;
 
 class CRespPktBase
 {
 public:
 	CRespPktBase() : ucErr(0) {}
 	virtual ~CRespPktBase() {}
-	virtual boost::shared_ptr<std::string> serialize(const TagPktHdr& head) = 0;
+	virtual std::shared_ptr<std::string> serialize(const TagPktHdr& head) = 0;
 	virtual void error(uint8_t err) { ucErr = err; }
 
 protected:
@@ -192,7 +191,7 @@ public:
 	, uiId(0)
 	{}
 	virtual ~CRespLogin(){}
-	virtual boost::shared_ptr<std::string> serialize(const TagPktHdr& head);
+	virtual std::shared_ptr<std::string> serialize(const TagPktHdr& head);
 
 	void id(uint32_t val) { uiId = val; }
 

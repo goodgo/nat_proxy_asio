@@ -2,7 +2,7 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-USER_OBJS := /usr/local/lib/gperftools/libtcmalloc_minimal.a /usr/local/lib/boost/libboost_coroutine.a /usr/local/lib/boost/libboost_thread.a /usr/local/lib/boost/libboost_context.a /usr/local/lib/boost/libboost_system.a /usr/local/lib/boost/libboost_chrono.a /usr/local/lib/boost/libboost_log_setup.a /usr/local/lib/boost/libboost_log.a /usr/local/lib/boost/libboost_regex.a /usr/local/lib/boost/libboost_filesystem.a /usr/local/lib/boost/libboost_program_options.a
+USER_OBJS := /opt/rh/devtoolset-7/root/usr/local/gperftools/lib/libtcmalloc_minimal.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_coroutine.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_thread.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_context.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_system.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_chrono.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_log_setup.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_log.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_regex.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_filesystem.a /opt/rh/devtoolset-7/root/usr/local/boost1_68/lib/libboost_program_options.a
 
 LIBS := -lssl -lrt -lpthread
 

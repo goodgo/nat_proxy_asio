@@ -6,10 +6,9 @@
  */
 
 #include "CChannel.hpp"
-#include <boost/bind.hpp>
-#include <boost/chrono/chrono.hpp>
-#include <boost/ratio.hpp>
+#include <boost/system/error_code.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <chrono>
 #include "CSession.hpp"
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
@@ -70,14 +69,12 @@ bool CChannel::CEnd::init(SessionPtr ss)
 	_remote_ep.address(ep.address());
 
 	if (_port_expired > 0)
-		asio::spawn(_strand, boost::bind(&CChannel::CEnd::portExpiredChecker, this, boost::placeholders::_1));
+		asio::spawn(_strand, std::bind(&CChannel::CEnd::portExpiredChecker, this, std::placeholders::_1));
 	return true;
 }
 
 void CChannel::CEnd::portExpiredChecker(asio::yield_context yield)
 {
-	using namespace boost::chrono;
-
 	boost::system::error_code ec;
 	boost::posix_time::time_duration td;
 	boost::asio::steady_timer timer(_strand.get_io_context());
@@ -91,7 +88,7 @@ void CChannel::CEnd::portExpiredChecker(asio::yield_context yield)
 			break;
 		}
 
-		timer.expires_from_now(seconds(10));
+		timer.expires_from_now(std::chrono::seconds(10));
 		timer.async_wait(yield[ec]);
 		if (ec) {
 			LOGF(ERR) << "channel[" << _id << "] " << _dir << " timer error: " << ec.message();
@@ -153,7 +150,7 @@ void CChannel::toStop()
 {
 	_strand.get_io_context().post(
 			_strand.wrap(
-					boost::bind(&CChannel::stop, shared_from_this())
+					std::bind(&CChannel::stop, shared_from_this())
 	));
 	LOGF(TRACE) << "channel[" << _id
 			<< "]("	 << _src_end.sessionId()
@@ -204,14 +201,14 @@ void CChannel::start()
 				<< " --> " << _dst_end.remote()
 				<< "]("    << _dst_end.sessionId() << ") opened.";
 
-		asio::spawn(_src_end._strand, boost::bind(
-				&CChannel::uploader, shared_from_this(), boost::placeholders::_1));
-		asio::spawn(_dst_end._strand, boost::bind(
-				&CChannel::downloader, shared_from_this(), boost::placeholders::_1));
+		asio::spawn(_src_end._strand, std::bind(
+				&CChannel::uploader, shared_from_this(), std::placeholders::_1));
+		asio::spawn(_dst_end._strand, std::bind(
+				&CChannel::downloader, shared_from_this(), std::placeholders::_1));
 
 		if (_display_interval > 0)
-			asio::spawn(_strand, boost::bind(
-					&CChannel::displayer, shared_from_this(), boost::placeholders::_1));
+			asio::spawn(_strand, std::bind(
+					&CChannel::displayer, shared_from_this(), std::placeholders::_1));
 	}
 }
 
@@ -337,8 +334,8 @@ void CChannel::uploader(asio::yield_context yield)
 			continue;
 		}
 
-		_up_bytes.add(bytes);
-		_up_packs.add(1);
+		_up_bytes.fetch_add(1);
+		_up_packs.fetch_add(1);
 	}
 	LOGF(TRACE) << "channel[" << _id << "] uploader exit!";
 }
@@ -449,8 +446,8 @@ void CChannel::downloader(asio::yield_context yield)
 			continue;
 		}
 
-		_down_bytes.add(bytes);
-		_down_packs.add(1);
+		_down_bytes.fetch_add(bytes);
+		_down_packs.fetch_add(1);
 	}
 	LOGF(TRACE) << "channel[" << _id << "] downloader exit!";
 }
@@ -466,7 +463,7 @@ void CChannel::displayer(asio::yield_context yield)
 	uint64_t down_packs_prev = 0;
 
 	while(_started) {
-		_display_timer.expires_from_now(boost::chrono::seconds(_display_interval));
+		_display_timer.expires_from_now(std::chrono::seconds(_display_interval));
 		_display_timer.async_wait(yield[ec]);
 		if (ec) {
 			LOG(ERR) << "channel[" << _id << "] displayer timer error: " << ec.message();

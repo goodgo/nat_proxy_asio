@@ -5,7 +5,9 @@
  *      Author: root
  */
 
+#include <memory>
 #include <iostream>
+#include <exception>
 #include "net/CServer.hpp"
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
@@ -39,7 +41,7 @@ int main(int argc, char* argv[])
 				gConfig->logPath(),
 				gConfig->logRotationSize(),
 				gConfig->logPrintLevel());
-		ServerPtr server(boost::make_shared<CServer>(gConfig->IOWorkers()));
+		auto server = std::make_shared<CServer>(gConfig->IOWorkers());
 		if (!server->start()) {
 			LOGF(ERR) << "server start failed!";
 			return 0;

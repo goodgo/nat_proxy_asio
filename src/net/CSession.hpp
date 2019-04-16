@@ -12,12 +12,8 @@
 #include <deque>
 #include <string>
 #include <sstream>
-
-#include <boost/system/error_code.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/smart_ptr/weak_ptr.hpp>
-#include <boost/noncopyable.hpp>
+#include <atomic>
+#include <memory>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
@@ -26,6 +22,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/placeholders.hpp>
+#include <boost/system/error_code.hpp>
 
 #include "CProtocol.hpp"
 #include "CChannel.hpp"
@@ -38,14 +35,18 @@ namespace asio {
 
 class CSessionMgr;
 
-class CSession : public boost::enable_shared_from_this<CSession>
+typedef std::shared_ptr<CSession> SessionPtr;
+class CSession : public std::enable_shared_from_this<CSession>
 {
 public:
 	typedef std::deque<StringPtr> MsgQue;
 
-	CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout);
+	CSession(std::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout);
+	CSession(const CSession&) = delete;
+	CSession& operator=(const CSession&) = delete;
 	~CSession();
-	static boost::shared_ptr<CSession> newSession();
+
+	static std::shared_ptr<CSession> newSession();
 	void start();
 	void toStop();
 	void stop();
@@ -68,7 +69,7 @@ public:
 	void closeSrcChannel(const ChannelPtr& chann);
 	void closeDstChannel(const ChannelPtr& chann);
 
-	void onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
+	void onRespAccess(const std::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
 
 private:
 	void onTimeout(const boost::system::error_code& ec);
@@ -76,11 +77,11 @@ private:
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
 	bool checkHead();
 
-	void onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req);
-	void onReqProxy(const boost::shared_ptr<CReqProxyPkt>& req);
-	void onRespProxyOk(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
-	void onRespProxyErr(const boost::shared_ptr<CReqProxyPkt>& req, uint8_t errcode);
-	void onReqGetProxies(const boost::shared_ptr<CReqGetProxiesPkt>& req);
+	void onReqLogin(const std::shared_ptr<CReqLoginPkt>& req);
+	void onReqProxy(const std::shared_ptr<CReqProxyPkt>& req);
+	void onRespProxyOk(const std::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
+	void onRespProxyErr(const std::shared_ptr<CReqProxyPkt>& req, uint8_t errcode);
+	void onReqGetProxies(const std::shared_ptr<CReqGetProxiesPkt>& req);
 	void onRespStopProxy(uint32_t id, const asio::ip::udp::endpoint& ep);
 
 	void writeImpl(const StringPtr& msg);
@@ -88,7 +89,7 @@ private:
 	void onWriteComplete(const boost::system::error_code& ec, const size_t bytes);
 
 private:
-	boost::shared_ptr<CSessionMgr> _mgr;
+	std::shared_ptr<CSessionMgr> _mgr;
 	asio::io_context::strand _strand;
 	asio::ip::tcp::socket _socket;
 	asio::steady_timer _timer;
@@ -106,8 +107,7 @@ private:
 	std::string		_guid;
 
 	bool 			_logined;
-	boost::atomic<bool>	_started;
+	std::atomic<bool>	_started;
 };
 
-typedef boost::shared_ptr<CSession> SessionPtr;
 #endif /* SRC_NET_CSESSION_HPP_ */

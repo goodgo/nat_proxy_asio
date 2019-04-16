@@ -8,16 +8,16 @@
 #ifndef SRC_UTIL_CSAFESET_HPP_
 #define SRC_UTIL_CSAFESET_HPP_
 
-#include <boost/thread/mutex.hpp>
-#include <boost/unordered/unordered_set.hpp>
+#include <mutex>
+#include <unordered_set>
 
 template<typename T>
 class CSafeSet
 {
 public:
-	typedef boost::unordered_set<T> Set;
+	typedef std::unordered_set<T> Set;
 	bool insert(T& item) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> _mutex;
 		if (_set.end() != _set.find(item))
 			return false;
 
@@ -25,7 +25,7 @@ public:
 		return true;
 	}
 	bool remove(T& item) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> _mutex;
 		if (_set.end() == _set.find(item))
 			return false;
 
@@ -34,7 +34,7 @@ public:
 	}
 
 	bool has(T& item) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> _mutex;
 		if (_set.end() == _set.find(item))
 			return false;
 		return true;
@@ -42,7 +42,7 @@ public:
 
 private:
 	Set _set;
-	boost::mutex _mutex;
+	mutable std::mutex _mutex;
 };
 
 

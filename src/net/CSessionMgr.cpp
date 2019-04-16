@@ -6,14 +6,16 @@
  */
 
 #include "CSessionMgr.hpp"
-#include <boost/make_shared.hpp>
+#include <mutex>
+#include <condition_variable>
+#include <boost/system/error_code.hpp>
 #include "CServer.hpp"
 #include "util/CLogger.hpp"
 #include "util/CConfig.hpp"
 
 CSessionMgr::CSessionMgr(ServerPtr server, std::string rds_addr, uint16_t rds_port, std::string rds_passwd)
 : _server(server)
-, _ss_db(boost::ref(server->getContext()), rds_addr, rds_port, rds_passwd)
+, _ss_db(std::ref(server->getContext()), rds_addr, rds_port, rds_passwd)
 , _session_id(1000)
 , _channel_id(1)
 {
@@ -45,7 +47,7 @@ bool CSessionMgr::stop()
 
 bool CSessionMgr::addSessionWithLock(const SessionId& id, const SessionPtr& ss)
 {
-	boost::mutex::scoped_lock lock(_ss_mutex);
+	std::unique_lock<std::mutex> lk(_ss_mutex);
 	if (_ss_map.find(id) != _ss_map.end())
 		return false;
 
@@ -55,7 +57,7 @@ bool CSessionMgr::addSessionWithLock(const SessionId& id, const SessionPtr& ss)
 
 SessionPtr CSessionMgr::getSessionWithLock(const SessionId& id)
 {
-	boost::mutex::scoped_lock lock(_ss_mutex);
+	std::unique_lock<std::mutex> lk(_ss_mutex);
 	Iterator it = _ss_map.find(id);
 	if (it == _ss_map.end())
 		return SessionPtr();
@@ -68,7 +70,7 @@ void CSessionMgr::closeSessionWithLock(const SessionPtr& ss)
 		_guid_set.remove(ss->guid());
 		_ss_db.del(ss->id());
 
-		boost::mutex::scoped_lock lock(_ss_mutex);
+		std::unique_lock<std::mutex> lk(_ss_mutex);
 		_ss_map.erase(ss->id());
 	}
 	ServerPtr server = _server.lock();
@@ -105,7 +107,7 @@ bool CSessionMgr::onSessionLogin(const SessionPtr& ss)
 	return true;
 }
 
-boost::shared_ptr<std::string> CSessionMgr::getAllSessions()
+std::shared_ptr<std::string> CSessionMgr::getAllSessions()
 {
 	return _ss_db.output();
 }
@@ -124,8 +126,8 @@ ChannelPtr CSessionMgr::createChannel(const SessionPtr& src_ss, const SessionId&
 		return ChannelPtr();
 	}
 
-	ChannelPtr chann = boost::make_shared<CChannel> (
-			boost::ref(server->getContext()),
+	ChannelPtr chann = std::make_shared<CChannel> (
+			std::ref(server->getContext()),
 			allocChannelId(),
 			gConfig->channMTU(),
 			gConfig->channPortExpired(),

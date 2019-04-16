@@ -8,27 +8,27 @@
 #ifndef SRC_UTIL_CSAFEMAP_HPP_
 #define SRC_UTIL_CSAFEMAP_HPP_
 
-#include <boost/thread/mutex.hpp>
-#include <boost/unordered/unordered_map.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
+#include <mutex>
+#include <memory>
+#include <unordered_map.hpp>
 
 
 template<typename K, typename V>
 class CSafeMap
 {
 public:
-	typedef boost::shared_ptr<V> ValuePtr;
-	typedef boost::unordered_map<K, ValuePtr> Container;
+	typedef std::shared_ptr<V> ValuePtr;
+	typedef std::unordered_map<K, ValuePtr> Container;
 	typedef typename Container::value_type value_type;
 	typedef typename Container::iterator iterator;
 
 	size_t size() {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		return _container.size();
 	}
 
 	bool insert(const K& key, ValuePtr value) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		if (_container.end() != _container.find(key))
 			return false;
 
@@ -37,7 +37,7 @@ public:
 	}
 
 	bool remove(const K& key) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		iterator it = _container.find(key);
 		if (_container.end() == it)
 			return false;
@@ -47,7 +47,7 @@ public:
 	}
 
 	bool has(const K& key) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		if (_container.end() == _container.find(key)) {
 			return false;
 		}
@@ -55,12 +55,12 @@ public:
 	}
 
 	ValuePtr get(const K& key) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		return _container[key];
 	}
 
 	void removeAll() {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		for (iterator it = _container.begin(); it != _container.end(); ) {
 			it = _container.erase(it);
 		}
@@ -68,7 +68,7 @@ public:
 
 private:
 	Container _container;
-	boost::mutex _mutex;
+	mutable std::mutex _mutex;
 };
 
 #endif /* SRC_UTIL_CSAFEMAP_HPP_ */

@@ -8,14 +8,10 @@
 #ifndef SRC_NET_CIOCONTEXTPOOL_HPP_
 #define SRC_NET_CIOCONTEXTPOOL_HPP_
 
-#include <vector>
 #include <list>
-
-#include <boost/thread.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/smart_ptr/weak_ptr.hpp>
-#include <boost/noncopyable.hpp>
+#include <vector>
+#include <thread>
+#include <memory>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/executor_work_guard.hpp>
@@ -25,12 +21,14 @@ namespace asio {
 }
 
 
-class CIoContextPool : private boost::noncopyable
+class CIoContextPool
 {
-	typedef boost::shared_ptr<asio::io_context> io_context_ptr;
+	typedef std::shared_ptr<asio::io_context> io_context_ptr;
 	typedef asio::executor_work_guard<asio::io_context::executor_type> io_context_work;
 
 public:
+	CIoContextPool(const CIoContextPool&) = delete;
+	CIoContextPool& operator=(const CIoContextPool&) = delete;
 	CIoContextPool(size_t pool_size);
 	~CIoContextPool();
 

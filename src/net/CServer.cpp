@@ -6,10 +6,6 @@
  */
 
 #include "CServer.hpp"
-#include <boost/bind.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/smart_ptr/weak_ptr.hpp>
-#include <boost/thread/thread.hpp>
 #include <boost/asio/io_context.hpp>
 #include "util/version.h"
 #include "util/CLogger.hpp"
@@ -67,8 +63,13 @@ bool CServer::init()
 	_signal_sets.add(SIGQUIT);
 #endif
 
-	_signal_sets.async_wait(boost::bind(&CServer::signalHandle, shared_from_this(), _1, _2));
-	_session_mgr = boost::make_shared<CSessionMgr>(shared_from_this(),
+	_signal_sets.async_wait(
+			std::bind(&CServer::signalHandle,
+					shared_from_this(),
+					std::placeholders::_1,
+					std::placeholders::_2));
+
+	_session_mgr = std::make_shared<CSessionMgr>(shared_from_this(),
 												   gConfig->redisIP(),
 												   gConfig->redisPort(),
 												   gConfig->redisPasswd());
@@ -107,7 +108,7 @@ bool CServer::start()
 	for (size_t i = 0; i < ips.size(); i++) {
 		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(ips[i]), gConfig->listenPort());
 		asio::spawn(getContext(),
-				boost::bind(&CServer::acceptor, shared_from_this(), i+1, ep, boost::placeholders::_1));
+				std::bind(&CServer::acceptor, shared_from_this(), i+1, ep, std::placeholders::_1));
 	}
 	_io_context_pool.run();// block here
 	return true;
@@ -136,8 +137,8 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 
 	LOG(INFO) << "acceptor[" << id << "] ["<< listen_ep << "] listenning...";
 	while(_started) {
-		SessionPtr ss = boost::make_shared<CSession>(_session_mgr,
-							 boost::ref(_io_context_pool.getIoContext()),
+		SessionPtr ss = std::make_shared<CSession>(_session_mgr,
+							 std::ref(_io_context_pool.getIoContext()),
 							 gConfig->freeSessionExpired());
 
 		acceptor.async_accept(ss->socket(), yield[ec]);
@@ -174,7 +175,7 @@ void CServer::acceptor(uint32_t id, asio::ip::tcp::endpoint listen_ep, asio::yie
 
 void CServer::sessionClosed(const SessionPtr& ss)
 {
-	_conn_num.sub(1);
+	_conn_num.fetch_sub(1);
 	LOG(TRACE) << "server close connection [ID@" << ss->id() << "] {"
 			<< _conn_num << "/" << gConfig->maxSessions() << "}";
 }

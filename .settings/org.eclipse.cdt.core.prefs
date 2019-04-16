@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.exe.debug.1401415997/CPP_INCLUDE_PATH/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.exe.debug.1401415997/CPP_INCLUDE_PATH/operation=append
+environment/project/cdt.managedbuild.config.gnu.exe.debug.1401415997/CPP_INCLUDE_PATH/value=/opt/rh/devtoolset-7/root/usr/include/c++/7/
+environment/project/cdt.managedbuild.config.gnu.exe.debug.1401415997/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.debug.1401415997/appendContributed=true

@@ -8,21 +8,17 @@
 #ifndef SRC_NET_CCHANNEL_HPP_
 #define SRC_NET_CCHANNEL_HPP_
 
+#include <memory>
+#include <atomic>
+#include <chrono>
+#include <mutex>
+#include <utility>
 #include <string>
+#include <unordered_map>
 #include <algorithm>
 
 #include <boost/noncopyable.hpp>
-#include <boost/smart_ptr/weak_ptr.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/make_shared.hpp>
 #include <boost/system/error_code.hpp>
-#include <boost/chrono/chrono.hpp>
-
-#include <boost/thread/mutex.hpp>
-#include <boost/atomic.hpp>
-#include <boost/unordered/unordered_map.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
@@ -37,10 +33,16 @@ namespace asio {
 	using namespace boost::asio;
 }
 
-class CChannel : public boost::enable_shared_from_this<CChannel>
-				, public boost::noncopyable
+class CChannel;
+typedef std::shared_ptr<CChannel> ChannelPtr;
+typedef std::weak_ptr<CChannel> ChannelWptr;
+
+class CChannel : public std::enable_shared_from_this<CChannel>
 {
 public:
+	CChannel(const CChannel&)=delete;
+	CChannel& operator=(const CChannel&)=delete;
+
 	CChannel(asio::io_context& io,
 			uint32_t id,
 			uint32_t mtu = 1500,
@@ -48,8 +50,8 @@ public:
 			uint32_t display_interval = 0);
 	~CChannel();
 
-	bool init(const boost::shared_ptr<CSession>& src_ss,
-			const boost::shared_ptr<CSession>& dst_ss);
+	bool init(const std::shared_ptr<CSession>& src_ss,
+			const std::shared_ptr<CSession>& dst_ss);
 	void start();
 	void toStop();
 	void stop();
@@ -63,7 +65,7 @@ public:
 		return _dst_end._local_ep;
 	}
 
-	boost::weak_ptr<CSession>& getDstSession() {
+	std::weak_ptr<CSession>& getDstSession() {
 		return _dst_end.session();
 	}
 
@@ -82,7 +84,7 @@ private:
 	public:
 		CEnd(asio::io_context& io, uint32_t chann_id, std::string dir, uint32_t mtu, uint32_t port_expired);
 		~CEnd();
-		bool init(boost::shared_ptr<CSession> ss);
+		bool init(std::shared_ptr<CSession> ss);
 		void stop();
 		inline void updateTime() {
 			if (_port_expired > 0)
@@ -93,7 +95,7 @@ private:
 		uint16_t localPort() { return _local_ep.port(); }
 		asio::ip::udp::socket::endpoint_type remote() { return _remote_ep; }
 		uint32_t sessionId() { return _owner_id; }
-		boost::weak_ptr<CSession>& session() { return _owner_ss; }
+		std::weak_ptr<CSession>& session() { return _owner_ss; }
 		void zeroBuf() { std::fill(_buf.begin(), _buf.end(), 0); }
 
 	public:
@@ -104,7 +106,7 @@ private:
 		asio::ip::udp::endpoint _local_ep;
 		asio::ip::udp::endpoint _remote_ep;
 
-		boost::weak_ptr<CSession> _owner_ss;
+		std::weak_ptr<CSession> _owner_ss;
 		uint32_t _owner_id;
 		std::vector<char> _buf;
 
@@ -118,46 +120,45 @@ private:
 	CEnd _dst_end;
 
 	asio::io_context::strand _strand;
-	boost::atomic<uint64_t> _up_bytes;
-	boost::atomic<uint64_t> _up_packs;
-	boost::atomic<uint64_t> _down_bytes;
-	boost::atomic<uint64_t> _down_packs;
+	std::atomic<uint64_t> _up_bytes;
+	std::atomic<uint64_t> _up_packs;
+	std::atomic<uint64_t> _down_bytes;
+	std::atomic<uint64_t> _down_packs;
 	boost::posix_time::ptime _start_pt;
 
 	asio::steady_timer _display_timer;
 	uint32_t 		_display_interval;
 
-	boost::atomic<bool> _started;
+	std::atomic<bool> _started;
 };
 
-typedef boost::shared_ptr<CChannel> ChannelPtr;
 
 
 class CChannelMap
 {
 public:
 	typedef uint32_t	ChannelId;
-	typedef boost::weak_ptr<CChannel> CChannelWptr;
-	typedef boost::unordered_map<ChannelId, CChannelWptr> Map;
+	typedef std::weak_ptr<CChannel> CChannelWptr;
+	typedef std::unordered_map<ChannelId, CChannelWptr> Map;
 	typedef Map::value_type ValueType;
 	typedef Map::iterator Iterator;
 
 	size_t size() {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		return _map.size();
 	}
 
 	bool insert(const ChannelId& id, const ChannelPtr& value) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		if (_map.end() != _map.find(id))
 			return false;
 
-		_map.insert(ValueType(id, value));
+		_map.insert(std::pair<ChannelId, CChannelWptr>(id, value));
 		return true;
 	}
 
 	bool remove(const ChannelId& id) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		Iterator it = _map.find(id);
 		if (_map.end() == it)
 			return false;
@@ -167,7 +168,7 @@ public:
 	}
 
 	bool has(const ChannelId& id) {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		if (_map.end() == _map.find(id)) {
 			return false;
 		}
@@ -175,7 +176,7 @@ public:
 	}
 
 	void stopAll() {
-		boost::mutex::scoped_lock lk(_mutex);
+		std::unique_lock<std::mutex> lk(_mutex);
 		for (Iterator it = _map.begin(); it != _map.end();) {
 			CChannelWptr& value = it->second;
 			ChannelPtr chann = value.lock();
@@ -186,8 +187,9 @@ public:
 	}
 
 private:
-	mutable boost::mutex _mutex;
+	mutable std::mutex _mutex;
 	Map _map;
 };
+
 
 #endif /* SRC_NET_CCHANNEL_HPP_ */

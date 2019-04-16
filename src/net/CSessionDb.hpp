@@ -8,17 +8,22 @@
 #ifndef SRC_NET_CSESSIONDB_HPP_
 #define SRC_NET_CSESSIONDB_HPP_
 
+#include <atomic>
+#include <memory>
 #include <string>
 #include <deque>
-#include <boost/unordered/unordered_map.hpp>
-#include <boost/thread/condition.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/atomic.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include <unordered_map>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <boost/asio/io_context.hpp>
+
 #include "CProtocol.hpp"
 #include "redisclient/redisasyncclient.h"
+
+namespace asio {
+	using namespace boost::asio;
+}
 
 namespace OPT{
 	enum {
@@ -50,11 +55,11 @@ const std::string kRedisHDEL = "HDEL";
 class CSessionDb
 {
 public:
-	typedef boost::unordered_map<uint32_t, SSessionInfo> DbMap;
+	typedef std::unordered_map<uint32_t, SSessionInfo> DbMap;
 	typedef std::deque<OperationItem> OperationStack;
-	typedef boost::shared_ptr<std::string> OutBuff;
+	typedef std::shared_ptr<std::string> OutBuff;
 
-	CSessionDb(boost::asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd);
+	CSessionDb(asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd);
 	~CSessionDb();
 	void stop();
 	void start();
@@ -77,13 +82,13 @@ public:
 	std::string _redis_addr;
 	uint16_t _redis_port;
 	std::string _redis_passwd;
-	boost::shared_ptr<boost::thread> _thread;
+	std::shared_ptr<std::thread> _thread;
 	DbMap _db;
-	boost::mutex _op_mutex;
-	boost::condition _op_cond;
+	std::mutex _op_mutex;
+	std::condition_variable _op_cond;
 	OperationStack _op_stack;
 
-	boost::mutex _out_mutex;
+	std::mutex _out_mutex;
 	OutBuff _out_buff;
 	enum { MAX_LENGTH = 2048 };
 	char	_buff[MAX_LENGTH];

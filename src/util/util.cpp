@@ -9,6 +9,7 @@
 #include <fstream>
 extern "C"
 {
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/param.h>

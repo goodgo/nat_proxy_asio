@@ -1,6 +1,5 @@
-src/net/CSessionDb.o src/net/CSessionDb.o: ../src/net/CSessionDb.cpp \
- ../src/net/CSessionDb.hpp ../src/net/CProtocol.hpp \
- ../src/redisclient/redisasyncclient.h \
+src/net/CSessionDb.o: ../src/net/CSessionDb.cpp ../src/net/CSessionDb.hpp \
+ ../src/net/CProtocol.hpp ../src/redisclient/redisasyncclient.h \
  ../src/redisclient/impl/redisclientimpl.h \
  ../src/redisclient/impl/../redisparser.h \
  ../src/redisclient/impl/../redisvalue.h \

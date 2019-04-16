@@ -6,17 +6,16 @@
  */
 
 #include "CSessionDb.hpp"
-#include <boost/make_shared.hpp>
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
-CSessionDb::CSessionDb(boost::asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd)
+CSessionDb::CSessionDb(asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd)
 : _redis(io_context)
 , _redis_addr(addr)
 , _redis_port(port)
 , _redis_passwd(passwd)
 , _thread()
-, _out_buff(boost::make_shared<std::string>(""))
+, _out_buff(std::make_shared<std::string>(""))
 , _buff_len(0)
 , _started(false)
 {
@@ -32,17 +31,17 @@ void CSessionDb::start()
 {
 	_started = true;
 
-	boost::asio::ip::tcp::endpoint ep(
-			boost::asio::ip::make_address(_redis_addr), _redis_port);
+	asio::ip::tcp::endpoint ep(
+			asio::ip::make_address(_redis_addr), _redis_port);
 
 	_redis.connect(ep,
-			boost::bind(&CSessionDb::onRedisConnected,
+			std::bind(&CSessionDb::onRedisConnected,
 					this,
-					boost::placeholders::_1,
-					boost::placeholders::_2
+					std::placeholders::_1,
+					std::placeholders::_2
 	));
-	_thread = boost::make_shared<boost::thread>(
-			boost::bind(&CSessionDb::worker, this));
+	_thread = std::make_shared<std::thread>(
+			std::bind(&CSessionDb::worker, this));
 	_thread->detach();
 }
 
@@ -68,12 +67,10 @@ void CSessionDb::worker()
 
 void CSessionDb::operate()
 {
-	boost::mutex::scoped_lock lk(_op_mutex);
-	while (_op_stack.empty()) {
-		_op_cond.wait(lk);
-		if (!_started)
-			return;
-	}
+	std::unique_lock<std::mutex> lk(_op_mutex);
+	_op_cond.wait(lk, [this](){ return !_op_stack.empty(); });
+	if (!_started)
+		return;
 
 	const OperationItem& item = _op_stack.front();
 
@@ -99,7 +96,7 @@ void CSessionDb::operate()
 			args.push_back(info.sGuid);
 
 			_redis.command(kRedisHMSET, args,
-					boost::bind(&CSessionDb::onRedisSetSessionCompleted, this, info.uiId, _1));
+					std::bind(&CSessionDb::onRedisSetSessionCompleted, this, info.uiId, std::placeholders::_1));
 		}
 
 		LOG(TRACE) << "session db add[" << info.uiId << "] size: " << _db.size();
@@ -121,7 +118,7 @@ void CSessionDb::operate()
 			args.push_back(kRedisFieldSessionAddr);
 			args.push_back(kRedisFieldSessionGuid);
 			_redis.command(kRedisHDEL, args,
-					boost::bind(&CSessionDb::onRedisDelSessionCompleted, this, info.uiId, _1));
+					std::bind(&CSessionDb::onRedisDelSessionCompleted, this, info.uiId, std::placeholders::_1));
 		}
 		LOG(TRACE) << "session db del[" << info.uiId << "] size: " << _db.size();
 		break;
@@ -157,7 +154,7 @@ void CSessionDb::serial()
 	_buff[_buff_len] = '\0';
 
 	{
-		boost::mutex::scoped_lock lk(_out_mutex);
+		std::lock_guard<std::mutex> lk(_out_mutex);
 		_out_buff.reset(new std::string(_buff, _buff_len));
 	}
 }
@@ -168,7 +165,7 @@ void CSessionDb::add(const SSessionInfo& info)
 	item.op = OPT::ADD;
 	item.info = info;
 	{
-		boost::mutex::scoped_lock lk(_op_mutex);
+		std::lock_guard<std::mutex> lk(_out_mutex);
 		_op_stack.push_back(item);
 	}
 	_op_cond.notify_all();
@@ -180,7 +177,7 @@ void CSessionDb::del(uint32_t id)
 	item.op = OPT::DEL;
 	item.info.uiId = id;
 	{
-		boost::mutex::scoped_lock lk(_op_mutex);
+		std::lock_guard<std::mutex> lk(_out_mutex);
 		_op_stack.push_back(item);
 	}
 	_op_cond.notify_all();
@@ -190,7 +187,7 @@ CSessionDb::OutBuff CSessionDb::output()
 {
 	OutBuff buff;
 	{
-		boost::mutex::scoped_lock lk(_out_mutex);
+		std::lock_guard<std::mutex> lk(_out_mutex);
 		buff = _out_buff;
 	}
 	return buff;
@@ -202,7 +199,7 @@ void CSessionDb::onRedisConnected(bool ok, const std::string& errmsg)
 		LOG(ERR) << "redis connect error: " << errmsg;
 	else
 		_redis.command(kRedisAUTH, _redis_passwd,
-				boost::bind(&CSessionDb::onRedisAuth, this, _1));
+				std::bind(&CSessionDb::onRedisAuth, this, std::placeholders::_1));
 }
 
 void CSessionDb::onRedisAuth(const RedisValue &result)

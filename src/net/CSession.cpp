@@ -8,13 +8,14 @@
 #include "CSession.hpp"
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/chrono.hpp>
+#include <chrono.hpp>
+
 #include "CSessionMgr.hpp"
 #include "CProtocol.hpp"
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
-CSession::CSession(boost::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout)
+CSession::CSession(std::shared_ptr<CSessionMgr> mgr, asio::io_context& io_context, uint32_t timeout)
 : _mgr(mgr)
 , _strand(io_context)
 , _socket(io_context)
@@ -61,11 +62,11 @@ void CSession::start()
 {
 	if (!_started) {
 		_started = true;
-		_timer.expires_from_now(boost::chrono::seconds(_timeout));
+		_timer.expires_from_now(std::chrono::seconds(_timeout));
 		_timer.async_wait(
-				boost::bind(&CSession::onTimeout,
+				std::bind(&CSession::onTimeout,
 							shared_from_this(),
-							asio::placeholders::error));
+							std::placeholders::_1));
 
 		_socket.set_option(asio::ip::tcp::no_delay(true));
 		doRead();
@@ -87,11 +88,11 @@ void CSession::doRead()
 			_rbuf,
 			asio::transfer_exactly(sizeof(TagPktHdr)),
 			_strand.wrap(
-					boost::bind(
+					std::bind(
 						&CSession::onReadHead,
 						shared_from_this(),
-						asio::placeholders::error,
-						asio::placeholders::bytes_transferred))
+						std::placeholders::_1,
+						std::placeholders::_2))
 		);
 	}
 }
@@ -102,7 +103,7 @@ void CSession::doWrite(const StringPtr& msg)
 		return;
 
 	_strand.post(
-			boost::bind(
+			std::bind(
 					&CSession::writeImpl,
 					shared_from_this(),
 					msg)
@@ -127,11 +128,11 @@ void CSession::onReadHead(const boost::system::error_code& ec, const size_t byte
 		_rbuf,
 		asio::transfer_exactly(_hdr.usBodyLen),
 		_strand.wrap(
-				boost::bind(
+				std::bind(
 						&CSession::onReadBody,
 						shared_from_this(),
-						asio::placeholders::error,
-						asio::placeholders::bytes_transferred))
+						std::placeholders::_1,
+						std::placeholders::_2))
 	);
 }
 
@@ -153,20 +154,20 @@ void CSession::onReadBody(const boost::system::error_code& ec, const size_t byte
 	case FUNC::REQ::HEARTBEAT:
 		break;
 	case FUNC::REQ::LOGIN: {
-		boost::shared_ptr<CReqLoginPkt> pkt = boost::make_shared<CReqLoginPkt>();
+		std::shared_ptr<CReqLoginPkt> pkt = std::make_shared<CReqLoginPkt>();
 		pkt->deserialize(pbuf, nmax);
 		onReqLogin(pkt);
 	}break;
 	case FUNC::REQ::PROXY: {
 		if (_session_type == SESSIONTYPE::CLIENT || _session_type == SESSIONTYPE::ANYONE) {
-			boost::shared_ptr<CReqProxyPkt> pkt = boost::make_shared<CReqProxyPkt>();
+			std::shared_ptr<CReqProxyPkt> pkt = std::make_shared<CReqProxyPkt>();
 			pkt->deserialize(pbuf, nmax);
 			onReqProxy(pkt);
 		}
 	}break;
 	case FUNC::REQ::GETPROXIES: {
 		if (_session_type == SESSIONTYPE::CLIENT || _session_type == SESSIONTYPE::ANYONE) {
-			boost::shared_ptr<CReqGetProxiesPkt> pkt = boost::make_shared<CReqGetProxiesPkt>();
+			std::shared_ptr<CReqGetProxiesPkt> pkt = std::make_shared<CReqGetProxiesPkt>();
 			pkt->deserialize(pbuf, nmax);
 			onReqGetProxies(pkt);
 		}
@@ -197,11 +198,11 @@ void CSession::write()
 			_socket,
 			asio::buffer(msg->c_str(), msg->length()),
 			_strand.wrap(
-					boost::bind(
+					std::bind(
 							&CSession::onWriteComplete,
 							shared_from_this(),
-							asio::placeholders::error,
-							asio::placeholders::bytes_transferred
+							std::placeholders::_1,
+							std::placeholders::_2
 					)
 			)
 	);
@@ -247,7 +248,7 @@ bool CSession::checkHead()
 	return false;
 }
 
-void CSession::onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req)
+void CSession::onReqLogin(const std::shared_ptr<CReqLoginPkt>& req)
 {
 	CRespLogin resp;
 	if (!_logined) {
@@ -280,7 +281,7 @@ void CSession::onReqLogin(const boost::shared_ptr<CReqLoginPkt>& req)
 	doWrite(msg);
 }
 
-void CSession::onReqProxy(const boost::shared_ptr<CReqProxyPkt>& req)
+void CSession::onReqProxy(const std::shared_ptr<CReqProxyPkt>& req)
 {
 	LOGF(INFO) << "session[" << _id << "] request proxy destination[" << req->uiDstId << "]";
 
@@ -307,7 +308,7 @@ void CSession::onReqProxy(const boost::shared_ptr<CReqProxyPkt>& req)
 	return;
 }
 
-void CSession::onReqGetProxies(const boost::shared_ptr<CReqGetProxiesPkt>& req)
+void CSession::onReqGetProxies(const std::shared_ptr<CReqGetProxiesPkt>& req)
 {
 	StringPtr msg;
 	{
@@ -363,7 +364,7 @@ void CSession::closeDstChannel(const ChannelPtr& chann)
 	onRespStopProxy(chann->id(), chann->dstEndpoint());
 }
 
-void CSession::onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann)
+void CSession::onRespAccess(const std::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann)
 {
 	TagPktHdr hdr;
 	bzero(&hdr, sizeof(TagPktHdr));
@@ -381,7 +382,7 @@ void CSession::onRespAccess(const boost::shared_ptr<CReqProxyPkt>& req, const Ch
 	doWrite(msg);
 }
 
-void CSession::onRespProxyOk(const boost::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann)
+void CSession::onRespProxyOk(const std::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann)
 {
 	CRespProxy resp;
 	resp.error(ERRCODE::SUCCESS);
@@ -393,7 +394,7 @@ void CSession::onRespProxyOk(const boost::shared_ptr<CReqProxyPkt>& req, const C
 	doWrite(msg);
 }
 
-void CSession::onRespProxyErr(const boost::shared_ptr<CReqProxyPkt>& req, uint8_t errcode)
+void CSession::onRespProxyErr(const std::shared_ptr<CReqProxyPkt>& req, uint8_t errcode)
 {
 	CRespProxy resp;
 	resp.error(errcode);

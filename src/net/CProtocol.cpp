@@ -74,7 +74,7 @@ StringPtr CRespLogin::serialize(const TagPktHdr& head)
 	buf[8] = ucErr;
 	memcpy(buf + 9, &uiId, 4);
 
-	StringPtr pkt = boost::make_shared<std::string>(buf, len);
+	StringPtr pkt = std::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return pkt;
 }
@@ -91,7 +91,7 @@ StringPtr CRespProxy::serialize(const TagPktHdr& head)
 	memcpy(buf + 9 + 4, &uiUdpAddr, 4);
 	memcpy(buf + 9 + 4 + 4, &usUdpPort, 2);
 
-	StringPtr pkt = boost::make_shared<std::string>(buf, len);
+	StringPtr pkt = std::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return pkt;
 }
@@ -110,7 +110,7 @@ StringPtr CRespAccess::serialize(const TagPktHdr& head)
 	memcpy(buf + 8 + 4 + 4 + 4, &usUdpPort, 2);
 	memcpy(buf + 8 + 4 + 4 + 4 + 2, &uiPrivateAddr, 4);
 
-	StringPtr pkt = boost::make_shared<std::string>(buf, len);
+	StringPtr pkt = std::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return pkt;
 }
@@ -124,7 +124,7 @@ StringPtr CRespGetProxies::serialize(const TagPktHdr& head)
 	memcpy(buf + 6, &bodylen, 2);
 	memcpy(buf + 8, sessions->c_str(), sessions->length());
 
-	StringPtr pkt = boost::make_shared<std::string>(buf, len);
+	StringPtr pkt = std::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return pkt;
 }
@@ -140,7 +140,7 @@ StringPtr CRespStopProxy::serialize(const TagPktHdr& head)
 	memcpy(buf + 8 + 4, &uiUdpAddr, 4);
 	memcpy(buf + 8 + 4 + 4, &usUdpPort, 2);
 
-	StringPtr pkt = boost::make_shared<std::string>(buf, len);
+	StringPtr pkt = std::make_shared<std::string>(buf, len);
 	delete[] buf;
 	return pkt;
 }

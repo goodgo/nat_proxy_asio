@@ -1,12 +1,11 @@
 #ifndef SRC_NET_CSESSIONMGR_HPP_
 #define SRC_NET_CSESSIONMGR_HPP_
 
-#include <boost/noncopyable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/unordered/unordered_map.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/smart_ptr/weak_ptr.hpp>
-#include <boost/atomic.hpp>
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+
 #include <sstream>
 #include <string>
 
@@ -16,17 +15,19 @@
 #include "util/CSafeSet.hpp"
 
 class CServer;
-class CSessionMgr : public boost::enable_shared_from_this<CSessionMgr>
-				  , private boost::noncopyable
+
+class CSessionMgr : public std::enable_shared_from_this<CSessionMgr>
 {
 public:
 	typedef uint32_t SessionId;
-	typedef boost::weak_ptr<CSession> SessionWptr;
-	typedef boost::unordered_map<SessionId, SessionWptr> SessionMap;
+	typedef std::weak_ptr<CSession> SessionWptr;
+	typedef std::unordered_map<SessionId, SessionWptr> SessionMap;
 	typedef SessionMap::iterator Iterator;
 	typedef std::map<uint32_t, std::string> FuncNameMap;
 
-	CSessionMgr(boost::shared_ptr<CServer> server, std::string rds_addr, uint16_t rds_port, std::string rds_passwd);
+	CSessionMgr(const CSessionMgr&) = delete;
+	CSessionMgr& operator=(const CSessionMgr&) = delete;
+	CSessionMgr(std::shared_ptr<CServer> server, std::string rds_addr, uint16_t rds_port, std::string rds_passwd);
 	~CSessionMgr();
 
 	bool init();
@@ -37,7 +38,7 @@ public:
 	void closeSessionWithLock(const SessionPtr& ss);
 
 	ChannelPtr createChannel(const SessionPtr& src_ss, const SessionId& dst_id);
-	boost::shared_ptr<std::string> getAllSessions();
+	std::shared_ptr<std::string> getAllSessions();
 	bool onSessionLogin(const SessionPtr& ss);
 
 	std::string getFuncName(uint8_t func)
@@ -56,17 +57,18 @@ private:
 	uint32_t allocChannelId() { return _channel_id.fetch_add(1); }
 
 private:
-	boost::weak_ptr<CServer> _server;
-	mutable boost::mutex _ss_mutex;
+	std::weak_ptr<CServer> _server;
+	mutable std::mutex _ss_mutex;
 	SessionMap _ss_map;
 	CSessionDb _ss_db;
 
 	std::map<uint32_t, std::string> _func_name_map;
 	CSafeSet<std::string> _guid_set;
 
-	boost::atomic<uint32_t> _session_id;
-	boost::atomic<uint32_t> _channel_id;
+	std::atomic<uint32_t> _session_id;
+	std::atomic<uint32_t> _channel_id;
 };
 
-typedef boost::shared_ptr<CSessionMgr> SessionMgrPtr;
+typedef std::shared_ptr<CSessionMgr> SessionMgrPtr;
+
 #endif

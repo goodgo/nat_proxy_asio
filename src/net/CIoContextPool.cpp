@@ -5,9 +5,7 @@
  *      Author: root
  */
 #include "CIoContextPool.hpp"
-#include <boost/thread/thread.hpp>
-#include <boost/bind.hpp>
-#include <boost/ref.hpp>
+#include <thread.hpp>
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
@@ -16,12 +14,12 @@ CIoContextPool::CIoContextPool(size_t pool_size)
 , _worker_num(0)
 , _started(true)
 {
-	_worker_num = boost::thread::hardware_concurrency();
+	_worker_num = std::thread::hardware_concurrency();
 	assert(_worker_num != 0);
 	_worker_num = pool_size;
 
 	for (size_t i = 0; i < _worker_num; i++) {
-		io_context_ptr io = boost::make_shared<asio::io_context>();
+		io_context_ptr io = std::make_shared<asio::io_context>();
 		_io_contexts.push_back(io);
 		_io_context_works.push_back(asio::make_work_guard(*io));
 	}
@@ -34,13 +32,13 @@ CIoContextPool::~CIoContextPool()
 
 void CIoContextPool::run()
 {
-	std::vector<boost::shared_ptr<boost::thread> > threads;
+	std::vector<std::shared_ptr<std::thread> > threads;
 	for (size_t i = 0; i < _io_contexts.size(); i++) {
-		boost::shared_ptr<boost::thread> t = boost::make_shared<boost::thread>(
-						boost::bind(
+		auto t = std::make_shared<std::thread>(
+						std::bind(
 								&CIoContextPool::startThread,
 								this,
-								boost::ref(_io_contexts[i])
+								std::ref(_io_contexts[i])
 						)
 		);
 		threads.push_back(t);

@@ -1,7 +1,11 @@
-src/net/CSession.o src/net/CSession.o: ../src/net/CSession.cpp \
- ../src/net/CSession.hpp ../src/net/CProtocol.hpp ../src/net/CChannel.hpp \
- ../src/util/CSafeMap.hpp ../src/util/util.hpp ../src/net/CSessionMgr.hpp \
- ../src/net/CSessionDb.hpp ../src/redisclient/redisasyncclient.h \
+src/net/CSession.o: ../src/net/CSession.cpp ../src/net/CSession.hpp \
+ ../src/net/CProtocol.hpp ../src/net/CChannel.hpp \
+ ../src/util/CSafeMap.hpp \
+ /opt/rh/devtoolset-7/root/usr/local/boost1_68/include/unordered_map.hpp \
+ ../src/util/util.hpp \
+ /opt/rh/devtoolset-7/root/usr/local/boost1_68/include/chrono.hpp \
+ ../src/net/CSessionMgr.hpp ../src/net/CSessionDb.hpp \
+ ../src/redisclient/redisasyncclient.h \
  ../src/redisclient/impl/redisclientimpl.h \
  ../src/redisclient/impl/../redisparser.h \
  ../src/redisclient/impl/../redisvalue.h \
@@ -28,7 +32,11 @@ src/net/CSession.o src/net/CSession.o: ../src/net/CSession.cpp \
 
 ../src/util/CSafeMap.hpp:
 
+/opt/rh/devtoolset-7/root/usr/local/boost1_68/include/unordered_map.hpp:
+
 ../src/util/util.hpp:
+
+/opt/rh/devtoolset-7/root/usr/local/boost1_68/include/chrono.hpp:
 
 ../src/net/CSessionMgr.hpp:
 
