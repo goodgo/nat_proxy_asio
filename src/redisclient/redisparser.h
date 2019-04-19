@@ -8,9 +8,12 @@
 
 #include <stack>
 #include <vector>
+#include <utility>
 
 #include "redisvalue.h"
 #include "config.h"
+
+namespace redisclient {
 
 class RedisParser
 {
@@ -29,46 +32,52 @@ public:
 
 protected:
     REDIS_CLIENT_DECL std::pair<size_t, ParseResult> parseChunk(const char *ptr, size_t size);
-    REDIS_CLIENT_DECL std::pair<size_t, ParseResult> parseArray(const char *ptr, size_t size);
 
-    static inline bool isChar(int c)
+    inline bool isChar(int c)
     {
         return c >= 0 && c <= 127;
     }
 
-    static inline bool isControl(int c)
+    inline bool isControl(int c)
     {
         return (c >= 0 && c <= 31) || (c == 127);
     }
 
+    REDIS_CLIENT_DECL long int bufToLong(const char *str, size_t size);
+
 private:
     enum State {
         Start = 0,
+        StartArray = 1,
 
-        String = 1,
-        StringLF = 2,
+        String = 2,
+        StringLF = 3,
 
-        ErrorString = 3,
-        ErrorLF = 4,
+        ErrorString = 4,
+        ErrorLF = 5,
 
-        Integer = 5,
-        IntegerLF = 6,
+        Integer = 6,
+        IntegerLF = 7,
 
-        BulkSize = 7,
-        BulkSizeLF = 8,
-        Bulk = 9,
-        BulkCR = 10,
-        BulkLF = 11,
+        BulkSize = 8,
+        BulkSizeLF = 9,
+        Bulk = 10,
+        BulkCR = 11,
+        BulkLF = 12,
 
-        ArraySize = 12,
-        ArraySizeLF = 13,
+        ArraySize = 13,
+        ArraySizeLF = 14,
+    };
 
-    } state;
+    std::stack<State> states;
 
     long int bulkSize;
     std::vector<char> buf;
-    std::stack<long int> arrayStack;
-    std::stack<RedisValue> valueStack;
+    RedisValue redisValue;
+
+    // temporary variables
+    std::stack<long int> arraySizes;
+    std::stack<RedisValue> arrayValues;
 
     static const char stringReply = '+';
     static const char errorReply = '-';
@@ -77,8 +86,10 @@ private:
     static const char arrayReply = '*';
 };
 
+}
+
 #ifdef REDIS_CLIENT_HEADER_ONLY
-#include "impl/redisparser.cpp"
+#include "redisclient/impl/redisparser.cpp"
 #endif
 
 #endif // REDISCLIENT_REDISPARSER_H

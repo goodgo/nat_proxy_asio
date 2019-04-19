@@ -8,9 +8,9 @@
 #ifndef SRC_UTIL_VERSION_H_
 #define SRC_UTIL_VERSION_H_
 
-#define	COM		"nat_proxy@root.copyright"
+#define	COM		"natproxy@root.copyright"
 #define VERSION_MAJOR 2
-#define VERSION_MINOR 2
+#define VERSION_MINOR 3
 
 #define BUILD_YEAR_CH0 (__DATE__[ 7])
 #define BUILD_YEAR_CH1 (__DATE__[ 8])

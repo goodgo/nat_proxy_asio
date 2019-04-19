@@ -31,16 +31,18 @@ namespace asio {
 	using namespace boost::asio;
 }
 
-class CServer : private std::enable_shared_from_this<CServer>
+class CServer : public std::enable_shared_from_this<CServer>
 {
 public:
 	CServer(uint32_t pool_size);
+	CServer(const CServer&) = delete;
+	CServer& operator=(const CServer&) = delete;
 	~CServer();
+
 	bool init();
 	bool start();
 	void stop();
 	void sessionClosed(const SessionPtr& ss);
-	void signalHandle(const boost::system::error_code& ec, int sig);
 	asio::io_context& getContext();
 
 private:

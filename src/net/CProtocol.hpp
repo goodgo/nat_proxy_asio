@@ -316,9 +316,9 @@ public:
 private:
 	uint16_t size() const{
 		return static_cast<uint16_t>(
-				sizeof(uiUdpId) +
-				sizeof(uiUdpAddr) +
-				sizeof(usUdpPort)
+					sizeof(uiUdpId) +
+					sizeof(uiUdpAddr) +
+					sizeof(usUdpPort)
 				);
 	}
 public:

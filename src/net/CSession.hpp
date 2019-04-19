@@ -56,9 +56,7 @@ public:
 	void stop();
 	bool isRuning() { return _started; }
 	void reader(asio::yield_context yield);
-
-	void doRead();
-	void doWrite(const StringPtr& msg);
+	void asyncWrite(const StringPtr& msg);
 
 	std::string& guid() { return _guid; }
 	bool logined() { return _logined; }
@@ -77,6 +75,7 @@ public:
 	void onRespAccess(const std::shared_ptr<CReqProxyPkt>& req, const ChannelPtr& chann);
 
 private:
+	void asyncWrite();
 	void onReadHead(const boost::system::error_code& ec, const size_t bytes);
 	void onReadBody(const boost::system::error_code& ec, const size_t bytes);
 	bool checkHead();

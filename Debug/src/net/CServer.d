@@ -6,21 +6,15 @@ src/net/CServer.o: ../src/net/CServer.cpp ../src/net/CServer.hpp \
  ../src/util/util.hpp ../src/net/CSessionDb.hpp \
  ../src/redisclient/redisasyncclient.h \
  ../src/redisclient/impl/redisclientimpl.h \
- ../src/redisclient/impl/../redisparser.h \
- ../src/redisclient/impl/../redisvalue.h \
- ../src/redisclient/impl/../config.h \
- ../src/redisclient/impl/../impl/redisvalue.cpp \
- ../src/redisclient/impl/../impl/../redisvalue.h \
- ../src/redisclient/impl/../impl/redisparser.cpp \
- ../src/redisclient/impl/../impl/../redisparser.h \
- ../src/redisclient/impl/../redisbuffer.h \
- ../src/redisclient/impl/../config.h \
+ ../src/redisclient/redisparser.h ../src/redisclient/redisvalue.h \
+ ../src/redisclient/config.h ../src/redisclient/impl/redisvalue.cpp \
+ ../src/redisclient/redisvalue.h ../src/redisclient/impl/redisparser.cpp \
+ ../src/redisclient/redisbuffer.h ../src/redisclient/config.h \
  ../src/redisclient/impl/redisclientimpl.cpp \
  ../src/redisclient/impl/redisclientimpl.h \
- ../src/redisclient/redisvalue.h ../src/redisclient/redisbuffer.h \
- ../src/redisclient/config.h ../src/redisclient/impl/redisasyncclient.cpp \
- ../src/redisclient/impl/../redisclient.h \
- ../src/redisclient/impl/../redisasyncclient.h ../src/util/CSafeSet.hpp \
+ ../src/redisclient/redisbuffer.h \
+ ../src/redisclient/impl/redisasyncclient.cpp \
+ ../src/redisclient/impl/throwerror.h ../src/util/CSafeSet.hpp \
  ../src/util/version.h ../src/util/CLogger.hpp ../src/util/CConfig.hpp \
  ../src/util/version.h
 
@@ -48,39 +42,31 @@ src/net/CServer.o: ../src/net/CServer.cpp ../src/net/CServer.hpp \
 
 ../src/redisclient/impl/redisclientimpl.h:
 
-../src/redisclient/impl/../redisparser.h:
-
-../src/redisclient/impl/../redisvalue.h:
-
-../src/redisclient/impl/../config.h:
-
-../src/redisclient/impl/../impl/redisvalue.cpp:
-
-../src/redisclient/impl/../impl/../redisvalue.h:
-
-../src/redisclient/impl/../impl/redisparser.cpp:
-
-../src/redisclient/impl/../impl/../redisparser.h:
-
-../src/redisclient/impl/../redisbuffer.h:
-
-../src/redisclient/impl/../config.h:
-
-../src/redisclient/impl/redisclientimpl.cpp:
-
-../src/redisclient/impl/redisclientimpl.h:
+../src/redisclient/redisparser.h:
 
 ../src/redisclient/redisvalue.h:
+
+../src/redisclient/config.h:
+
+../src/redisclient/impl/redisvalue.cpp:
+
+../src/redisclient/redisvalue.h:
+
+../src/redisclient/impl/redisparser.cpp:
 
 ../src/redisclient/redisbuffer.h:
 
 ../src/redisclient/config.h:
 
+../src/redisclient/impl/redisclientimpl.cpp:
+
+../src/redisclient/impl/redisclientimpl.h:
+
+../src/redisclient/redisbuffer.h:
+
 ../src/redisclient/impl/redisasyncclient.cpp:
 
-../src/redisclient/impl/../redisclient.h:
-
-../src/redisclient/impl/../redisasyncclient.h:
+../src/redisclient/impl/throwerror.h:
 
 ../src/util/CSafeSet.hpp:
 

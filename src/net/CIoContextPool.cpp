@@ -19,7 +19,7 @@ CIoContextPool::CIoContextPool(size_t pool_size)
 	_worker_num = pool_size;
 
 	for (size_t i = 0; i < _worker_num; i++) {
-		io_context_ptr io = std::make_shared<asio::io_context>();
+		auto io = std::make_shared<asio::io_context>();
 		_io_contexts.push_back(io);
 		_io_context_works.push_back(asio::make_work_guard(*io));
 	}
@@ -52,16 +52,16 @@ void CIoContextPool::startThread(io_context_ptr& io)
 {
 	while (!io->stopped()) {
 		try {
-			LOGF(TRACE) << "context thread running. ";
+			LOG_INFO << "context thread running...";
 			io->run();
 			break;
 		}catch(const std::exception& e) {
-			LOGF(FATAL) << "context catch exception: " << e.what();
+			LOGF_FATAL << "context catch exception: " << e.what();
 			util::printBacktrace(0);
 			break;
 		}
 	}
-	LOG(INFO) << "context thread exit.";
+	LOG_INFO << "context thread exit.";
 }
 
 void CIoContextPool::stop()
@@ -69,8 +69,7 @@ void CIoContextPool::stop()
 	if (_started) {
 		_started = false;
 
-		for (std::list<io_context_work>::iterator it = _io_context_works.begin();
-				it != _io_context_works.end(); ++it) {
+		for (auto it = _io_context_works.begin(); it != _io_context_works.end(); ++it) {
 			it->reset();
 		}
 		_io_context_works.clear();
@@ -79,7 +78,7 @@ void CIoContextPool::stop()
 			_io_contexts[i]->stop();
 		}
 		_io_contexts.clear();
-		LOG(INFO) << "context pool stopped.";
+		LOG_WARN << "context pool stopped.";
 	}
 }
 

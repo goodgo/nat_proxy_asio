@@ -6,13 +6,16 @@
  */
 
 #include "CSessionDb.hpp"
+#include <deque>
 #include "util/CLogger.hpp"
 #include "util/util.hpp"
 
+using namespace redisclient;
+
 CSessionDb::CSessionDb(asio::io_context& io_context, std::string addr, uint16_t port, std::string passwd)
 : _redis(io_context)
-, _redis_addr(addr)
 , _redis_port(port)
+, _redis_addr(addr)
 , _redis_passwd(passwd)
 , _thread()
 , _out_buff(std::make_shared<std::string>(""))
@@ -34,14 +37,23 @@ void CSessionDb::start()
 	asio::ip::tcp::endpoint ep(
 			asio::ip::make_address(_redis_addr), _redis_port);
 
-	_redis.connect(ep,
-			std::bind(&CSessionDb::onRedisConnected,
-					this,
-					std::placeholders::_1,
-					std::placeholders::_2
-	));
-	_thread = std::make_shared<std::thread>(
-			std::bind(&CSessionDb::worker, this));
+	_redis.connect(ep, [&](boost::system::error_code ec){
+		if (ec)
+			LOG_ERROR << "redis connect error: " << ec.message();
+		else
+			_redis.command(kRedisAUTH, {_redis_passwd}, [](const RedisValue &result){
+				LOG_INFO << "redis authenticated: " << result.toString();
+			});
+	});
+
+	_thread = std::make_shared<std::thread>([&](){
+		LOG_INFO << "session db thread start.";
+		while(_started) {
+			operate();
+			serial();
+		}
+		LOG_INFO << "session db thread exit.";
+	});
 	_thread->detach();
 }
 
@@ -51,18 +63,8 @@ void CSessionDb::stop()
 		_started = false;
 		_redis.disconnect();
 		_op_cond.notify_all();
-		LOG(INFO) << "session db stopped!";
+		LOG_INFO << "session db stopped!";
 	}
-}
-
-void CSessionDb::worker()
-{
-	LOG(INFO) << "session db thread start.";
-	while(_started) {
-		operate();
-		serial();
-	}
-	LOG(INFO) << "session db thread exit.";
 }
 
 void CSessionDb::operate()
@@ -72,15 +74,15 @@ void CSessionDb::operate()
 	if (!_started)
 		return;
 
-	const OperationItem& item = _op_stack.front();
+	const auto& item = _op_stack.front();
 
 	switch(item.op)	{
 	case OPT::ADD: {
-		const SSessionInfo& info = item.info;
+		const auto& info = item.info;
 		_db.insert(std::make_pair(info.uiId, info));
 
 		if (_redis.isConnected()) {
-			std::list<RedisBuffer> args;
+			std::deque<RedisBuffer> args;
 			std::string key = kRedisKeySession+info.sGuid;
 			args.push_back(key);
 
@@ -95,36 +97,38 @@ void CSessionDb::operate()
 			args.push_back(kRedisFieldSessionGuid);
 			args.push_back(info.sGuid);
 
-			_redis.command(kRedisHMSET, args,
-					std::bind(&CSessionDb::onRedisSetSessionCompleted, this, info.uiId, std::placeholders::_1));
+			_redis.command(kRedisHMSET, args, [key](const RedisValue &result){
+				LOG_INFO << "redis set session[" << key << "] completed: " << result.inspect();
+			});
 		}
 
-		LOG(TRACE) << "session db add[" << info.uiId << "] size: " << _db.size();
+		LOG_INFO << "session db add[" << info.uiId << "] " << info.sGuid << "size: " << _db.size();
 		break;
 	}
 	case OPT::DEL: {
-		DbMap::const_iterator it = _db.find(item.info.uiId);
+		auto it = _db.find(item.info.uiId);
 		if (it == _db.end())
 			break;
 
-		SSessionInfo info = it->second;
+		auto info = it->second;
 
 		_db.erase(info.uiId);
 		if (_redis.isConnected()) {
-			std::list<RedisBuffer> args;
+			std::deque<RedisBuffer> args;
 			std::string key = kRedisKeySession+info.sGuid;
 			args.push_back(key);
 			args.push_back(kRedisFieldSessionId);
 			args.push_back(kRedisFieldSessionAddr);
 			args.push_back(kRedisFieldSessionGuid);
-			_redis.command(kRedisHDEL, args,
-					std::bind(&CSessionDb::onRedisDelSessionCompleted, this, info.uiId, std::placeholders::_1));
+			_redis.command(kRedisHDEL, args, [key](const RedisValue &result){
+				LOG_INFO << "redis del session[" << key << "] completed: " << result.inspect();
+			});
 		}
-		LOG(TRACE) << "session db del[" << info.uiId << "] size: " << _db.size();
+		LOG_INFO << "session db del[" << info.uiId << "] " << info.sGuid << " size: " << _db.size();
 		break;
 	}
 	default:
-		LOG(TRACE) << "session db error operation:" << item.op;
+		LOGF_ERROR << "session db error operation:" << item.op;
 		break;
 	};
 
@@ -136,8 +140,8 @@ void CSessionDb::serial()
 	bzero(_buff, MAX_LENGTH);
 
 	uint8_t cnt = 0;
-	uint16_t max_cnt = static_cast<uint16_t>(MAX_LENGTH / SSessionInfo::size());
-	DbMap::iterator it = _db.begin();
+	auto max_cnt = static_cast<uint16_t>(MAX_LENGTH / SSessionInfo::size());
+	auto it = _db.begin();
 	for (_buff_len = 1; it != _db.end() && _buff_len < MAX_LENGTH && cnt < max_cnt; ++it) {
 		uint32_t id = it->second.uiId;
 		uint32_t addr = it->second.uiAddr;
@@ -191,28 +195,4 @@ CSessionDb::OutBuff CSessionDb::output()
 		buff = _out_buff;
 	}
 	return buff;
-}
-
-void CSessionDb::onRedisConnected(bool ok, const std::string& errmsg)
-{
-	if (!ok)
-		LOG(ERR) << "redis connect error: " << errmsg;
-	else
-		_redis.command(kRedisAUTH, _redis_passwd,
-				std::bind(&CSessionDb::onRedisAuth, this, std::placeholders::_1));
-}
-
-void CSessionDb::onRedisAuth(const RedisValue &result)
-{
-	LOG(INFO) << "redis authenticated: " << result.inspect();
-}
-
-void CSessionDb::onRedisSetSessionCompleted(uint32_t id, const RedisValue &result)
-{
-	LOG(INFO) << "redis set session[" << id << "] completed: " << result.inspect();
-}
-
-void CSessionDb::onRedisDelSessionCompleted(uint32_t id, const RedisValue &result)
-{
-	LOG(INFO) << "redis del session[" << id << "] completed: " << result.inspect();
 }

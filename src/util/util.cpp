@@ -33,13 +33,13 @@ namespace util {
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	std::cerr << "fork() failed." << std::endl;
+	    	std::cerr << "fork() failed.\n";
 	        return false;
 	    }
 
 	    int ret = setsid();
 	    if (ret < 0) {
-	    	std::cerr << "setsid() failed." << std::endl;
+	    	std::cerr << "setsid() failed.\n";
 	        return false;
 	    }
 
@@ -47,7 +47,7 @@ namespace util {
 	    if (pid)
 	        exit(0);
 	    else if (pid < 0) {
-	    	std::cerr << "fork() failed." << std::endl;
+	    	std::cerr << "fork() failed.\n";
 	        return false;
 	    }
 
@@ -56,7 +56,7 @@ namespace util {
 
 	    ret = chdir("/");
 	    if (ret < 0) {
-	    	std::cerr << "chdir(\"/\") failed." << std::endl;
+	    	std::cerr << "chdir(\"/\") failed.\n";
 	        return false;
 	    }
 
@@ -66,7 +66,7 @@ namespace util {
 
 	std::string formatBytes(const uint64_t& bytes)
 	{
-		char buff[32] = "";
+		char buff[16] = "";
 		if (bytes >= TB)
 			sprintf(buff, "%.2f TB", (double)bytes / TB);
 		else if (bytes >= GB)
@@ -92,7 +92,7 @@ namespace util {
 		if (!outfile.is_open())
 			return;
 
-		const int SIZE  = 100;
+		constexpr int SIZE  = 100;
 	    void *buffer[100];
 
 	    int nptrs = backtrace(buffer, SIZE);
@@ -107,7 +107,7 @@ namespace util {
 
 	    for (int j = 0; j < nptrs; j++) {
 	    	outfile << "#" << j << " >> " << strings[j] << "\n";
-	    	std::cout << strings[j] << std::endl;
+	    	std::cerr << strings[j] << "\n";
 	    }
 
 	    free(strings);

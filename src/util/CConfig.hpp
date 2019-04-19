@@ -66,7 +66,7 @@ public:
 		}
 		catch (boost::property_tree::ini_parser_error &e)
 		{
-			std::cout << "read ini error: " << e.what() << std::endl;
+			std::cerr << "read ini error: " << e.what() << "\n";
 			return false;
 		}
 	}

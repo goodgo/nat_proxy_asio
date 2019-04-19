@@ -30,30 +30,28 @@ int main(int argc, char* argv[])
 
 	if (gConfig->daemon()) {
 		if (!util::daemon()) {
-			std::cout << "daemon failed." << std::endl;
+			std::cerr << "daemon failed.\n";
 			return 0;
 		}
 	}
 
 	try
 	{
-		initLog(gConfig->procName(),
+		CLogger::getInstance()->Init(
+				gConfig->procName(),
 				gConfig->logPath(),
 				gConfig->logRotationSize(),
 				gConfig->logPrintLevel());
-		ServerPtr server(std::make_shared<CServer>(gConfig->IOWorkers()));
-		if (!server) {
-			LOGF(ERR) << "server create failed!";
-			return 0;
-		}
+		auto server = std::make_shared<CServer>(gConfig->IOWorkers());
 		if (!server->start()) {
-			LOGF(ERR) << "server start failed!";
+			LOGF_ERROR << "server start failed!";
 			return 0;
 		}
 	}
 	catch(std::exception& e)
 	{
-		std::cout << "server crash: " << e.what() << std::endl;
+		std::cout << "server crash: " << e.what() << "\n";
+		LOG_FATAL << "server crash: " << e.what() << "\n";
 	}
 
 	return 0;

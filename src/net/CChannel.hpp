@@ -18,13 +18,11 @@
 #include <algorithm>
 
 #include <boost/system/error_code.hpp>
-
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/ip/udp.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <boost/chrono.hpp>
 
 class CSession;
 
@@ -39,14 +37,14 @@ typedef std::weak_ptr<CChannel> ChannelWptr;
 class CChannel : public std::enable_shared_from_this<CChannel>
 {
 public:
-	CChannel(const CChannel&)=delete;
-	CChannel& operator=(const CChannel&)=delete;
-
 	CChannel(asio::io_context& io,
 			uint32_t id,
-			uint32_t mtu = 1500,
-			uint32_t port_expired = 0,
-			uint32_t display_interval = 0);
+			uint32_t mtu,
+			uint32_t port_expired,
+			uint32_t display_interval);
+
+	CChannel(const CChannel&)=delete;
+	CChannel& operator=(const CChannel&)=delete;
 	~CChannel();
 
 	bool init(const std::shared_ptr<CSession>& src_ss,
@@ -87,7 +85,7 @@ private:
 		void stop();
 		inline void updateTime() {
 			if (_port_expired > 0)
-				_endtime = boost::posix_time::second_clock::local_time();
+				_update_time_t = std::time(NULL);
 		}
 		void portExpiredChecker(asio::yield_context yield);
 		bool opened() { return _opened; }
@@ -99,19 +97,19 @@ private:
 
 	public:
 		asio::io_context::strand _strand;
-		uint32_t _id;
-		std::string _dir;
+		uint32_t 				_id;
+		std::string 			_dir;
 		asio::ip::udp::socket 	_socket;
 		asio::ip::udp::endpoint _local_ep;
 		asio::ip::udp::endpoint _remote_ep;
 
 		std::weak_ptr<CSession> _owner_ss;
-		uint32_t _owner_id;
-		std::vector<char> _buf;
+		uint32_t 			_owner_id;
+		std::vector<char> 	_buf;
 
-		uint32_t _port_expired;
-		boost::posix_time::ptime _endtime;
-		bool _opened;
+		uint32_t 	_port_expired;
+		time_t 		_update_time_t;
+		bool 		_opened;
 	};
 	//////////////////////////////////////////////////////////////
 	uint32_t _id;
@@ -123,10 +121,10 @@ private:
 	std::atomic<uint64_t> _up_packs;
 	std::atomic<uint64_t> _down_bytes;
 	std::atomic<uint64_t> _down_packs;
-	boost::posix_time::ptime _start_pt;
+	std::chrono::steady_clock::time_point _start_tp;
 
-	asio::steady_timer _display_timer;
-	uint32_t 		_display_interval;
+	asio::steady_timer	_display_timer;
+	uint32_t 			_display_interval;
 
 	std::atomic<bool> _started;
 };
@@ -158,8 +156,7 @@ public:
 
 	bool remove(const ChannelId& id) {
 		std::unique_lock<std::mutex> lk(_mutex);
-		Iterator it = _map.find(id);
-		if (_map.end() == it)
+		if (_map.end() == _map.find(id))
 			return false;
 
 		_map.erase(id);
@@ -176,9 +173,9 @@ public:
 
 	void stopAll() {
 		std::unique_lock<std::mutex> lk(_mutex);
-		for (Iterator it = _map.begin(); it != _map.end();) {
-			CChannelWptr& value = it->second;
-			ChannelPtr chann = value.lock();
+		for (auto it = _map.begin(); it != _map.end();) {
+			auto& value = it->second;
+			auto chann = value.lock();
 			if (chann)
 				chann->toStop();
 			it = _map.erase(it);

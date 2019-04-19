@@ -63,27 +63,23 @@ public:
 	~CSessionDb();
 	void stop();
 	void start();
-	void worker();
 	void add(const SSessionInfo& info);
-	void onSetHandle(bool ok, const std::string& errmsg);
 	void del(uint32_t id);
 	OutBuff output();
 
 private:
 	void operate();
 	void serial();
-	void onRedisConnected(bool ok, const std::string& errmsg);
-	void onRedisAuth(const RedisValue &result);
-	void onRedisSetSessionCompleted(uint32_t id, const RedisValue &result);
-	void onRedisDelSessionCompleted(uint32_t id, const RedisValue &result);
 
 public:
-	RedisAsyncClient _redis;
+	redisclient::RedisAsyncClient _redis;
+	uint16_t 	_redis_port;
 	std::string _redis_addr;
-	uint16_t _redis_port;
 	std::string _redis_passwd;
+
 	std::shared_ptr<std::thread> _thread;
 	DbMap _db;
+
 	std::mutex _op_mutex;
 	std::condition_variable _op_cond;
 	OperationStack _op_stack;
